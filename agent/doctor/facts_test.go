@@ -34,7 +34,7 @@ func TestFacts(t *testing.T) {
 		`step1: Step "Run Tests": 68 s in total. Jobs that ran it: 1 of 3. The longest took 68 s.`,
 		"setup: Setup, checkout, cache and cleanup steps: 6 s, 6% of all step time.",
 		"failed: Of the last 5 finished runs of this workflow, 1 failed.",
-		"history: Successful runs in that list: 3. Middle value 310 s, fastest 300 s, slowest 320 s.",
+		"history: Successful runs in that list: 3. Median, rounded, 310 s, fastest 300 s, slowest 320 s.",
 		"concurrency: ", "timeout: Jobs without timeout-minutes: lint.", "needs: Jobs that use needs to wait for other jobs: mac.",
 	} {
 		if !strings.Contains(got, want) {

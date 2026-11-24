@@ -127,7 +127,7 @@ func Facts(workflow string, jobs []Job, history []past) []Fact {
 		add("failed", 0, "Of the last %d finished runs of this workflow, %d failed.", len(history), failed)
 		if len(times) >= 3 {
 			slices.Sort(times)
-			add("history", times[len(times)/2], "Successful runs in that list: %d. Middle value %d s, fastest %d s, slowest %d s.", len(times), times[len(times)/2], times[0], times[len(times)-1])
+			add("history", median(times), "Successful runs in that list: %d. Median, rounded, %d s, fastest %d s, slowest %d s.", len(times), median(times), times[0], times[len(times)-1])
 		}
 	}
 	for _, f := range written(workflow) {

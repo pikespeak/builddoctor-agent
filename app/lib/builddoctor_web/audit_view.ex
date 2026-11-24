@@ -37,8 +37,8 @@ defmodule BuilddoctorWeb.AuditView do
     told = &Enum.any?(said, fn m -> String.starts_with?(m, &1) end)
 
     [
-      {"Read the workflow and its last run", :github in kinds},
-      {"Ask for what is missing and look for problems",
+      {"Read the workflow and its latest successful run", :github in kinds},
+      {"Ask for more facts if needed and look for problems",
        Enum.any?(said, &(not String.starts_with?(&1, "The analyst asked")))},
       {"Let the council check every statement", told.("The council checked")}
     ]

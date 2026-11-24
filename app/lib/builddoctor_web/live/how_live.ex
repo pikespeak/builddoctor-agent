@@ -13,7 +13,7 @@ defmodule BuilddoctorWeb.HowLive do
     {"Read",
      "Code reads the workflow, the newest good run and recent failures from GitHub, and computes facts from them."},
     {"Suspect",
-     "A model names problems. Every finding must cite facts and may use only numbers from those facts."},
+     "A model may ask for more facts, up to three times and from a closed list. Then it names problems. Every finding must cite facts and may use only numbers from those facts."},
     {"Check",
      "A council tries to refute each statement. What does not pass every check is not shown."},
     {"Measure",
@@ -127,7 +127,7 @@ defmodule BuilddoctorWeb.HowLive do
           <h3 class="font-display text-2xl font-bold">We tried to fool it</h3>
           <dl class="mt-3 flex flex-wrap gap-x-10 gap-y-3 tabular-nums">
             <div>
-              <dt>Planted errors that got through</dt><dd class="text-3xl font-bold">0 of 30</dd>
+              <dt>Planted errors that got through</dt><dd class="text-3xl font-bold">0 of 32</dd>
             </div>
             <div>
               <dt>Good findings that got through</dt><dd class="text-3xl font-bold">7 of 11</dd>

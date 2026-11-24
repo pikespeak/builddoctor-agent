@@ -152,7 +152,7 @@ func (p Public) answer(ctx context.Context, f Reading, q Question, looks *int) (
 		return workflowHistory(name, runs)
 	case "workflow_failure":
 		for _, r := range runs {
-			if r.Conclusion != "failure" && r.Conclusion != "timed_out" {
+			if r.Conclusion != "failure" && r.Conclusion != "timed_out" && r.Conclusion != "startup_failure" {
 				continue
 			}
 			if !look() {
@@ -215,7 +215,10 @@ func (p Public) jobTimes(ctx context.Context, f Reading, job string, look func()
 	if len(times) == 0 {
 		return "", false
 	}
-	return fmt.Sprintf("Job %q in earlier good runs, the newest first: %s.", plainName(job), strings.Join(times, ", ")), true
+	if len(times) == 1 {
+		return fmt.Sprintf("Job %q took %s in an earlier successful run.", plainName(job), times[0]), true
+	}
+	return fmt.Sprintf("Job %q in earlier successful runs, newest first: %s.", plainName(job), strings.Join(times, ", ")), true
 }
 
 func workflowHistory(name string, runs []past) (string, bool) {
@@ -233,9 +236,10 @@ func workflowHistory(name string, runs []past) (string, bool) {
 		return "", false
 	}
 	text := fmt.Sprintf("Workflow %s: of the runs that were read, %d succeeded and %d failed.", name, good, bad)
-	if good > 0 {
-		slices.Sort(times)
-		text += fmt.Sprintf(" The middle value of the good ones is %d s.", times[len(times)/2])
+	if good == 1 {
+		text += fmt.Sprintf(" The successful run took %d s.", times[0])
+	} else if good > 1 {
+		text += fmt.Sprintf(" The median of the successful runs, rounded, is %d s.", median(times))
 	}
 	return text, true
 }
@@ -273,7 +277,10 @@ func (p Public) describe(ctx context.Context, f Reading, path, name string) (str
 	if value(root, "concurrency") != nil {
 		rule = "a concurrency rule at the top"
 	}
-	return fmt.Sprintf("Workflow file %s: starts on %s; jobs written: %d; %s; checker notes: %d.", name, strings.Join(events, ", "), jobs, rule, notes), true
+	if len(events) == 0 {
+		events = append(events, "none of the common ones")
+	}
+	return fmt.Sprintf("Workflow file %s: recognized triggers: %s; jobs written: %d; %s; checker notes: %d.", name, strings.Join(events, ", "), jobs, rule, notes), true
 }
 
 func mustLint(workflow string) []lintError {
@@ -282,4 +289,15 @@ func mustLint(workflow string) []lintError {
 		return nil
 	}
 	return found
+}
+
+// median of at least one value; two middle values are averaged and rounded.
+func median(times []int) int {
+	t := slices.Clone(times)
+	slices.Sort(t)
+	m := len(t) / 2
+	if len(t)%2 == 1 {
+		return t[m]
+	}
+	return (t[m-1] + t[m] + 1) / 2
 }

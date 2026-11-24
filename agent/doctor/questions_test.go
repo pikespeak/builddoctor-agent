@@ -31,9 +31,9 @@ func TestTheAnalystAsksAndCitesTheAnswers(t *testing.T) {
 	for _, want := range []string{
 		`Longest steps of job "vet": "Run b vet /b" 7 s.`,
 		"Workflow ci.yml: of the runs that were read, 2 succeeded and 0 failed.",
-		"Workflow file fast.yml: starts on push; jobs written: 2; no concurrency rule at the top; checker notes: 0.",
+		"Workflow file fast.yml: recognized triggers: push; jobs written: 2; no concurrency rule at the top; checker notes: 0.",
 		"Workflow fast.yml: none of its runs that were read failed.",
-		`Job "vet" in earlier good runs, the newest first: 9 s.`,
+		`Job "vet" took 9 s in an earlier successful run.`,
 		"ask5",
 	} {
 		if !strings.Contains(w.facts, want) {
@@ -112,7 +112,7 @@ func TestAnswers(t *testing.T) {
 	}
 	for kind, want := range map[string]string{
 		"workflow_failure": `Workflow ci.yml: in its newest failed run, step "Unit" of job "scan b" failed.`,
-		"workflow_history": "4 succeeded and 1 failed. The middle value of the good ones is 8 s.",
+		"workflow_history": "4 succeeded and 1 failed. The median of the successful runs, rounded, is 8 s.",
 	} {
 		if got, ok := ask(kind, "ci.yml", 0); !ok || !strings.Contains(got, want) {
 			t.Fatal(kind, got)
@@ -137,7 +137,7 @@ func TestAnswers(t *testing.T) {
 		t.Fatal(got)
 	}
 	w.file = "on: pull_request_target\nconcurrency: x\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: echo ${{ github.event.pull_request.title }}\n"
-	if got, ok := ask("workflow_file", "ci.yml", 0); !ok || !strings.Contains(got, "a concurrency rule") || !strings.Contains(got, "checker notes: 0") || strings.Contains(got, "untrusted") {
+	if got, ok := ask("workflow_file", "ci.yml", 0); !ok || !strings.Contains(got, "a concurrency rule") || !strings.Contains(got, "checker notes: 0") || !strings.Contains(got, "none of the common ones") || strings.Contains(got, "untrusted") {
 		t.Fatal("what could be used is not told", got)
 	}
 	for _, odd := range []string{"", "a: [", strings.Repeat("x", 20_001)} {
@@ -159,6 +159,20 @@ func TestAnswers(t *testing.T) {
 		if got, ok := ask(kind, subject, 0); ok {
 			t.Fatal(kind, got)
 		}
+	}
+}
+
+func TestMedian(t *testing.T) {
+	for _, c := range []struct {
+		in   []int
+		want int
+	}{{[]int{5}, 5}, {[]int{9, 1}, 5}, {[]int{3, 1, 2}, 2}, {[]int{4, 1, 2, 9}, 3}} {
+		if got := median(c.in); got != c.want {
+			t.Fatal(c.in, got)
+		}
+	}
+	if got, _ := workflowHistory("x", []past{{Conclusion: "success", Seconds: 7}}); !strings.HasSuffix(got, "The successful run took 7 s.") {
+		t.Fatal(got)
 	}
 }
 
