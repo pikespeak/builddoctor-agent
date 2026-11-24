@@ -1,0 +1,59 @@
+/* See the Tailwind configuration guide for advanced usage
+   https://tailwindcss.com/docs/configuration */
+
+@import "tailwindcss" source(none);
+@import "phoenix-colocated/builddoctor/colocated.css";
+@source "../css";
+@source "../js";
+@source "../../lib/builddoctor_web";
+@source "../../deps/petal_components/**/*.*ex";
+@source not "../../deps/petal_components/lib/petal_components/showcase";
+/* Required for Tailwind to automatically pick up changes in colocated CSS files in dev */
+@source "../../_build/dev/phoenix-colocated/builddoctor/*/";
+
+/* A Tailwind plugin that makes "hero-#{ICON}" classes available.
+   The heroicons installation itself is managed by your mix.exs */
+@plugin "../vendor/heroicons";
+
+
+@import "../../deps/petal_components/assets/default.css";
+
+/* The page has one light theme; Petal must not switch parts of it with the system. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-paper: #f1ece0;
+  --color-bark: #2a2620;
+  --color-moss: #5d5849;
+  --color-sand: #e6dfcc;
+  --color-leaf: #4f8f57;
+  --color-grass: #5f8a5c;
+  --color-way: #f3dfad;
+  --color-sun: #f2b84b;
+  --color-violet: #8a5fa8;
+  --color-soil: #37603f;
+  --color-madder: #8e3022;
+  --color-removed: #f6d9d3;
+  --color-added: #dbe8cf;
+  --color-primary-500: #a33a2a;
+  --color-primary-600: #8e3022;
+  --color-primary-700: #74261b;
+  --font-display: Georgia, "Times New Roman", serif;
+}
+
+/* A tree grows out of its seed; the server only says queued, running or done. */
+.tree { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 1.2s ease-out; }
+.tree[data-stage="queued"] { transform: scale(0.1); }
+.tree[data-stage="running"] { transform: scale(0.72); transition-duration: 20s; }
+.tree[data-stage="done"] { transform: scale(1); }
+.tree-label[data-stage="queued"] { opacity: 0.45; }
+.seed:hover rect, .seed[data-chosen="true"] rect { fill: rgb(255 255 255 / 0.28); }
+.doctor { transition: transform 1.2s ease-in-out; }
+.badge { display: none; }
+/* Text in the picture shrinks with it; on a phone numbers and the list below replace it. */
+@media (max-width: 639px) {
+  .badge { display: inline; }
+  .tag, .axis, .caption { display: none; }
+}
+.pc-button { min-height: 2.75rem; }
+@media (prefers-reduced-motion: reduce) { .tree, .doctor { transition: none; } }

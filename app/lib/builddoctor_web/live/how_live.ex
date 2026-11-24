@@ -1,0 +1,248 @@
+defmodule BuilddoctorWeb.HowLive do
+  @moduledoc "Explains what BuildDoctor does. Measured numbers come from the stored Trial."
+  use BuilddoctorWeb, :live_view
+
+  alias Builddoctor.{Bench, Forest}
+  alias BuilddoctorWeb.{AuditView, Timeline}
+  alias PetalComponents.Card
+
+  # Shown only if they stand in the forest with something to show.
+  @examples ["gin-gonic/gin", "caddyserver/caddy"]
+
+  @steps [
+    {"Read",
+     "Code reads the workflow, the newest good run and recent failures from GitHub, and computes facts from them."},
+    {"Suspect",
+     "A model names problems. Every finding must cite facts and may use only numbers from those facts."},
+    {"Check",
+     "A council tries to refute each statement. What does not pass every check is not shown."},
+    {"Measure",
+     "On our own test project, the change is measured: the old and the new workflow take turns, eight runs in total. One run per side only warms up."},
+    {"Verdict",
+     "Code compares the runs. The result is accepted, rejected, not proven or failed, and every run is linked."}
+  ]
+
+  @council [
+    {"QA", "another model", "tries to refute the statement from the facts and the workflow"},
+    {"Safety", "fixed rules, then a model",
+     "screens for harmful advice, insults, claims of proof and attempts to steer a model"},
+    {"Engineer", "code only",
+     "checks that a change stays within the allowed parts, adds no new actionlint error and, if jobs wait for fewer others, is predicted to finish earlier"},
+    {"Chair", "code only", "publishes what passed everything; a missing vote counts as a refusal"}
+  ]
+
+  @limits [
+    "We never run code from other projects. We only read them.",
+    "We have no write access to other projects. You open the pull request yourself.",
+    "We read public projects only.",
+    "We do not read build logs. We can say which step fails, but often not why.",
+    "A finding about another project is a suspicion. Only a measured trial that meets our rules counts as evidence of an improvement."
+  ]
+
+  @parts [
+    {"GitHub",
+     "Workflows, runs and jobs. A connector, without a token in the Sprite, starts the trial runs on our own test project. Public projects are read with a token for public data."},
+    {"The Sprite",
+     "One Fly.io Sprite holds everything: the agent in Go, the page in Phoenix LiveView, the rules in Ash and the database in Postgres. It sleeps while nothing happens."},
+    {"OpenAI",
+     "A second connector, without a key in the Sprite. One model suspects, another one checks. Audit calls are tracked against a shared spending limit."}
+  ]
+
+  @impl true
+  def mount(_params, session, socket) do
+    if connected?(socket), do: BuilddoctorWeb.Endpoint.subscribe("audit:forest")
+
+    {:ok,
+     socket
+     |> assign(
+       page_title: "How it works",
+       requester: BuilddoctorWeb.Requester.signed_in?(session)
+     )
+     |> assign(steps: @steps, council: @council, limits: @limits, parts: @parts)
+     |> load()}
+  end
+
+  defp load(socket) do
+    proof =
+      Bench.own_audits!()
+      |> Enum.map(&AuditView.load/1)
+      |> Enum.find(&match?(%{audit: %{state: :done}, trial: %{verdict: :accepted}}, &1))
+
+    examples =
+      for audit <- Bench.planted_audits!(),
+          audit.repository in @examples,
+          audit.findings != [],
+          do: audit
+
+    assign(socket, proof: proof, examples: examples)
+  end
+
+  @impl true
+  def handle_info(_, socket), do: {:noreply, load(socket)}
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <main class="mx-auto grid max-w-5xl gap-12 px-4 py-6">
+      <Layouts.brand />
+      <section class="grid items-end gap-8 lg:grid-cols-[1.4fr_1fr]">
+        <div class="grid gap-4">
+          <h1 class="font-display text-4xl font-bold sm:text-6xl">
+            Slow or red CI? We measure before we claim.
+          </h1>
+          <p class="max-w-prose text-xl">
+            BuildDoctor reads a public GitHub Actions pipeline, names what costs time or keeps failing, and shows the facts behind it.
+          </p>
+          <p><PC.button link_type="a" to={~p"/"} label="Examine a project" /></p>
+        </div>
+        <.numbers :if={@proof} view={@proof} />
+      </section>
+      <.proof :if={@proof} view={@proof} />
+      <section id="steps" class="grid gap-4">
+        <h2 class="font-display text-3xl font-bold">How it works</h2>
+        <ol class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <li
+            :for={{{name, text}, i} <- Enum.with_index(@steps, 1)}
+            class="border-t-4 border-bark pt-3"
+          >
+            <strong class="font-display text-2xl">
+              <span class="tabular-nums text-moss">{i}</span> {name}
+            </strong>
+            <p class="mt-2">{text}</p>
+          </li>
+        </ol>
+      </section>
+      <section id="council" class="grid gap-4">
+        <h2 class="font-display text-3xl font-bold">The council</h2>
+        <p class="max-w-prose text-lg">Models only vote. Code decides.</p>
+        <dl class="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+          <div :for={{name, kind, text} <- @council} class="border-l-4 border-leaf pl-4">
+            <dt class="font-display text-xl font-bold">
+              {name} <span class="font-sans text-base font-normal text-moss">({kind})</span>
+            </dt>
+            <dd>{text}</dd>
+          </div>
+        </dl>
+        <Card.card id="probe" class="border-bark bg-white p-4 sm:p-6">
+          <h3 class="font-display text-2xl font-bold">We tried to fool it</h3>
+          <dl class="mt-3 flex flex-wrap gap-x-10 gap-y-3 tabular-nums">
+            <div>
+              <dt>Planted errors that got through</dt><dd class="text-3xl font-bold">0 of 30</dd>
+            </div>
+            <div>
+              <dt>Good findings that got through</dt><dd class="text-3xl font-bold">7 of 11</dd>
+            </div>
+          </dl>
+          <p class="mt-3 max-w-prose text-moss">
+            One test on November 24, 2026. We wrote the cases, the rules and the prompts ourselves, so this is no guarantee. The council is strict: it also blocks good findings.
+          </p>
+        </Card.card>
+        <p class="max-w-prose">
+          It refuses us, too. It once turned down a change to our own test project because no fact about timing supported the promised gain. Since then, code predicts the gain of a new job order before the council votes, if the job times allow it.
+        </p>
+      </section>
+      <section id="limits" class="grid gap-4">
+        <h2 class="font-display text-3xl font-bold">What we do not do</h2>
+        <ul class="grid max-w-prose list-disc gap-2 pl-6 text-lg">
+          <li :for={text <- @limits}>{text}</li>
+        </ul>
+      </section>
+      <section id="parts" class="grid gap-4">
+        <h2 class="font-display text-3xl font-bold">Under the hood</h2>
+        <ol class="grid items-stretch gap-3 md:grid-cols-[1fr_auto_1.3fr_auto_1fr]">
+          <li
+            :for={{{name, text}, i} <- Enum.with_index(@parts)}
+            class="contents"
+          >
+            <span
+              :if={i > 0}
+              class="self-center justify-self-center rotate-90 text-3xl md:rotate-0"
+              aria-hidden="true"
+            >↔</span>
+            <div class={["border-2 border-bark p-4", if(i == 1, do: "bg-way", else: "bg-white")]}>
+              <strong class="font-display text-xl">{name}</strong>
+              <p class="mt-2">{text}</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+      <section :if={@examples != []} id="examples" class="grid gap-4">
+        <h2 class="font-display text-3xl font-bold">Examples</h2>
+        <ul class="grid gap-3 sm:grid-cols-2">
+          <li :for={audit <- @examples}>
+            <a href={~p"/a/#{audit.id}"} class="block h-full border-2 border-bark bg-white p-4">
+              <strong class="block text-lg break-words">{audit.repository}</strong>
+              <span>{AuditView.summary(audit)}</span>
+              <span class="mt-2 block text-moss">A suspicion, not proof</span>
+            </a>
+          </li>
+        </ul>
+      </section>
+      <section class="grid gap-3">
+        <h2 class="font-display text-3xl font-bold">Try it</h2>
+        <p class="text-lg">
+          Enter a public GitHub project with a recent successful workflow run on its default branch, started by a push. It is free and read-only.
+        </p>
+        <p><PC.button link_type="a" to={~p"/"} label="Examine a project" /></p>
+      </section>
+      <Layouts.footer requester={@requester} />
+    </main>
+    """
+  end
+
+  # The measured result stands beside the headline.
+  defp numbers(assigns) do
+    [before, with_change] = AuditView.before_after(assigns.view.trial.numbers)
+    assigns = assign(assigns, before: before, with_change: with_change)
+
+    ~H"""
+    <div id="numbers" class="border-l-4 border-leaf pl-5 tabular-nums">
+      <p class="text-5xl font-bold sm:text-6xl">
+        {@before} <span aria-hidden="true">→</span><span class="sr-only">to</span> {@with_change}
+      </p>
+      <p class="mt-2 text-lg">
+        Median {String.downcase(AuditView.goal(@view.trial.goal))} on our own test project, before and with the change
+      </p>
+    </div>
+    """
+  end
+
+  defp proof(assigns) do
+    {headline, reason} = AuditView.result(assigns.view)
+    plan = AuditView.plan(assigns.view, :after)
+
+    assigns =
+      assign(assigns,
+        headline: headline,
+        reason: reason,
+        timelines: AuditView.timelines(assigns.view),
+        words: Forest.describe(plan)
+      )
+
+    ~H"""
+    <section id="proof" class="grid gap-5 border-2 border-bark bg-white p-4 sm:p-6">
+      <h2 class="font-display text-3xl font-bold">{@headline}</h2>
+      <img
+        src={~p"/a/#{@view.audit.id}/forest.svg"}
+        alt={@words}
+        width="1200"
+        height="630"
+        loading="lazy"
+        class="h-auto w-full border-2 border-bark"
+      />
+      <div :for={{{title, rows}, i} <- Enum.with_index(@timelines)} class="grid gap-3">
+        <h3 class="font-display text-xl font-bold">{title}</h3>
+        <Timeline.timeline id={"how-#{i}"} label={title} rows={rows} />
+      </div>
+      <p class="max-w-prose">
+        {@reason} Three counted runs per side on GitHub-hosted runners, in a small test project of our own. Your pipeline will behave differently.
+      </p>
+      <p>
+        <a href={~p"/a/#{@view.audit.id}"} class="inline-block py-2 underline">
+          See the change and all runs
+        </a>
+      </p>
+    </section>
+    """
+  end
+end
