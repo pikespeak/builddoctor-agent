@@ -297,7 +297,7 @@ defmodule Builddoctor.Bench.Audit do
     attribute :facts, {:array, Builddoctor.Bench.Fact},
       public?: true,
       default: [],
-      constraints: [max_length: 40]
+      constraints: [max_length: 50]
 
     attribute :live_number, :integer, public?: true, constraints: [min: 1, max: 100]
     attribute :live_side, :atom, public?: true, constraints: [one_of: [:baseline, :trial]]

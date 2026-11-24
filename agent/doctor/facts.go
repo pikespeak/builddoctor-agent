@@ -21,7 +21,7 @@ type Fact struct {
 }
 
 const (
-	maxFacts = 40
+	maxFacts = 50
 	maxSteps = 60
 )
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -14,7 +15,7 @@ import (
 
 const (
 	councilModel   = "gpt-6.2-sol" // another model than the analyst's
-	councilVersion = 4             // raise it with every change of the words or rules below
+	councilVersion = 5             // raise it with every change of the words or rules below
 )
 
 // Statement is one thing the analyst says.
@@ -154,18 +155,31 @@ func (d Doctor) council(ctx context.Context, au *Audit, facts []Fact, workflow s
 	if ok, err := d.Ash.BudgetLeft(ctx); err != nil || !ok {
 		return err // nothing is published without votes
 	}
-	for role, ask := range map[string]func() (map[string]Vote, int, int, error){
-		"qa":     func() (map[string]Vote, int, int, error) { return d.OpenAI.QA(ctx, list, facts, workflow) },
-		"safety": func() (map[string]Vote, int, int, error) { return d.OpenAI.Safety(ctx, list) },
+	for role, ask := range map[string]func([]Statement) (map[string]Vote, int, int, error){
+		"qa":     func(l []Statement) (map[string]Vote, int, int, error) { return d.OpenAI.QA(ctx, l, facts, workflow) },
+		"safety": func(l []Statement) (map[string]Vote, int, int, error) { return d.OpenAI.Safety(ctx, l) },
 	} {
-		got, in, out, err := ask()
-		if in > 0 {
-			if e := d.Ash.Spent(ctx, au.ID, councilModel, in, out); e != nil {
-				return refused{errors.New("A model call could not be accounted for.")}
+		got := map[string]Vote{}
+		// A model sometimes leaves out a statement. It is asked once more about those; then no vote is a refusal.
+		for range 2 {
+			rest := slices.DeleteFunc(slices.Clone(list), func(s Statement) bool { _, ok := got[s.ID]; return ok })
+			if len(rest) == 0 {
+				break
 			}
-		}
-		if err != nil {
-			return noModel{err}
+			votes, in, out, err := ask(rest)
+			if in > 0 {
+				if e := d.Ash.Spent(ctx, au.ID, councilModel, in, out); e != nil {
+					return refused{errors.New("A model call could not be accounted for.")}
+				}
+			}
+			if err != nil {
+				return noModel{err}
+			}
+			for _, s := range rest { // only what was asked; a first vote is never replaced
+				if v, ok := votes[s.ID]; ok {
+					got[s.ID] = v
+				}
+			}
 		}
 		for _, s := range list {
 			v, ok := got[s.ID]

@@ -80,7 +80,7 @@ func TestTokenDoesNotFollowARedirect(t *testing.T) {
 
 func TestWithoutAUsableTokenReadingGoesOn(t *testing.T) {
 	for name, file := range map[string]string{
-		"missing": filepath.Join(t.TempDir(), "none"), "empty": tokenFile(t, ""), "classic": tokenFile(t, "ghp_" + "0123456789abcdefghij0123"),
+		"missing": filepath.Join(t.TempDir(), "none"), "empty": tokenFile(t, ""), "classic": tokenFile(t, "ghp_"+"0123456789abcdefghij0123"),
 		"two lines": tokenFile(t, fakeToken+"\nX: y"), "odd": tokenFile(t, "github_pat_ä"),
 	} {
 		k := &keeper{answer: fine}

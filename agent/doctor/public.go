@@ -55,6 +55,8 @@ type Reading struct {
 	Total                       int
 	History                     []past
 	Trouble                     []Fact
+	Runs                        map[string][]past // of every workflow that was read
+	base                        string
 }
 
 // Read finds the slowest recent workflow of the default branch.
@@ -112,7 +114,7 @@ func (p Public) Read(ctx context.Context, repo string) (Reading, error) {
 	if f.RunID == 0 {
 		return f, refused{errors.New("No successful workflow run on the default branch was found.")}
 	}
-	f.History = history[f.Path]
+	f.History, f.Runs, f.base = history[f.Path], history, base
 	var c struct{ Type, Encoding, Content string }
 	if err := p.c.do(ctx, "GET", base+"/contents/"+f.Path+"?ref="+f.SHA, nil, &c); err != nil {
 		return f, gone(err)
@@ -214,11 +216,8 @@ func (d Doctor) foreign(ctx context.Context, au *Audit) error {
 	}
 	file, notices := examineFile(f.Workflow)
 	facts := slices.Concat(f.Trouble, file, Facts(f.Workflow, f.All, f.History))
-	facts = facts[:min(maxFacts-1, len(facts))] // one place is kept for the plan
+	facts = facts[:min(maxFacts-1-maxRounds*maxQuestions, len(facts))] // places for the answers and the plan
 	if err := d.notices(ctx, au, notices); err != nil {
-		return err
-	}
-	if err := d.Ash.RecordFacts(ctx, au.ID, facts, f.Jobs); err != nil {
 		return err
 	}
 	trials, err := d.Ash.Trials(ctx, au.ID)
@@ -229,7 +228,22 @@ func (d Doctor) foreign(ctx context.Context, au *Audit) error {
 	if err != nil {
 		return err
 	}
-	if len(trials)+len(found) == 0 { // otherwise proposed before a restart
+	if len(trials)+len(found) > 0 { // proposed before a restart; the findings cite the stored facts
+		facts = au.Facts
+	} else {
+		if err := d.Ash.RecordFacts(ctx, au.ID, facts, f.Jobs); err != nil {
+			return err
+		}
+		more, err := d.wonder(ctx, au, f, facts)
+		if err != nil {
+			return err
+		}
+		if len(more) > len(facts) {
+			facts = more
+			if err := d.Ash.RecordFacts(ctx, au.ID, facts, f.Jobs); err != nil {
+				return err
+			}
+		}
 		advice, err := d.ask(ctx, au, f.Workflow, f.All, facts, Kinds)
 		if errors.Is(err, errBudget) { // the facts stand without a model
 			if err := d.Ash.Log(ctx, au.ID, "openai", "The model budget is used up. The facts are computed without it.", ""); err != nil {
@@ -257,7 +271,7 @@ func (d Doctor) foreign(ctx context.Context, au *Audit) error {
 	if trials, err = d.Ash.Trials(ctx, au.ID); err != nil {
 		return err
 	}
-	if len(trials) > 0 {
+	if len(trials) > 0 && planOf(facts) == nil {
 		if fact, ok := planned(f.Workflow, trials[0].Patch, f.All); ok {
 			facts = append(facts, fact)
 			if err := d.Ash.RecordFacts(ctx, au.ID, facts, f.Jobs); err != nil {

@@ -30,6 +30,11 @@ type wood struct {
 	finds    []map[string]any
 	notices  []map[string]any
 	attempt  string
+	asks     []string // answers of the model to the question rounds
+	rounds   []string
+	asked    int
+	final    string
+	recorded int
 	wait     string
 	notes    string
 	failed   map[string]string // run to its jobs
@@ -120,6 +125,7 @@ func (w *wood) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		}
 	case strings.HasSuffix(p, "/record_facts"):
 		w.facts = fmt.Sprint(at["facts"])
+		w.recorded++
 	case p == "/api/json/findings":
 		if strings.Contains(fmt.Sprint(at["title"]), "invented") {
 			res.WriteHeader(400)
@@ -130,7 +136,15 @@ func (w *wood) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		send(!w.broke)
 	case p == "/api/json/events":
 		w.logs = append(w.logs, fmt.Sprint(at["message"]))
+	case p == "/v1/responses" && strings.Contains(string(b), "who may ask"):
+		text := `{"questions":[]}`
+		if len(w.asks) > 0 {
+			text, w.asks = w.asks[0], w.asks[1:]
+		}
+		w.rounds = append(w.rounds, string(b))
+		send(map[string]any{"status": "completed", "output": []any{map[string]any{"content": []any{map[string]any{"type": "output_text", "text": text}}}}, "usage": map[string]any{"input_tokens": w.asked, "output_tokens": 6}})
 	case p == "/v1/responses":
+		w.final = string(b)
 		send(map[string]any{"status": "completed", "output": []any{map[string]any{"content": []any{map[string]any{"type": "output_text", "text": w.model}}}}, "usage": map[string]any{"input_tokens": 5, "output_tokens": 6}})
 	case p == "/api/json/notices":
 		w.notices = append(w.notices, at)

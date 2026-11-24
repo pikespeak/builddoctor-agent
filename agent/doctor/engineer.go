@@ -114,6 +114,17 @@ func examineFile(workflow string) ([]Fact, []Notice) {
 	return facts, notices[:min(len(notices), 10)]
 }
 
+type yamlNode = yaml.Node
+
+// rootOf returns the top of a file that is one document.
+func rootOf(text string) (*yaml.Node, bool) {
+	var doc yaml.Node
+	if yaml.Unmarshal([]byte(text), &doc) != nil || len(doc.Content) != 1 {
+		return nil, false
+	}
+	return doc.Content[0], true
+}
+
 func each(m *yaml.Node, f func(string, *yaml.Node)) {
 	if m == nil || m.Kind != yaml.MappingNode {
 		return

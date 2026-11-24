@@ -118,6 +118,14 @@ defmodule BuilddoctorWeb.SelfServiceTest do
     refute has_element?(view, "#waits")
     assert has_element?(view, "button", "Copy the link")
 
+    Bench.log_event!(
+      %{audit_id: audit.id, kind: :openai, status: :ok, message: "The analyst asked: x."},
+      @agent
+    )
+
+    Process.sleep(350)
+    refute has_element?(view, "#steps li[data-done=true]")
+
     for {kind, text} <- [
           github: "Read.",
           openai: "The council checked 1 statement and passed 1."

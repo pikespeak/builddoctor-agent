@@ -180,6 +180,33 @@ func TestCouncilPublishesOnlyWhatEverybodyPasses(t *testing.T) {
 	}
 }
 
+func TestAMissingVoteIsAskedForOnce(t *testing.T) {
+	seen := map[string]int{}
+	late := func(id string) string {
+		seen[id]++
+		if id == "late" && seen[id] == 1 || id == "never" {
+			return "none"
+		}
+		return "pass"
+	}
+	w := newTable()
+	w.qa = late
+	for _, id := range []string{"good", "late", "never"} {
+		w.finds = append(w.finds, find(id, "It waits."))
+	}
+	if err := w.doctor(t).council(context.Background(), au, au.Facts, ""); err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string]string{"good": "published", "late": "published", "never": "withheld"} {
+		if w.status[id] != want {
+			t.Fatal(id, w.status[id])
+		}
+	}
+	if seen["good"] != 1 || seen["late"] != 2 || seen["never"] != 2 || len(w.calls) != 3 {
+		t.Fatal(seen, len(w.calls))
+	}
+}
+
 func TestCouncilWithoutVotesPublishesNothing(t *testing.T) {
 	for name, change := range map[string]func(*table){
 		"budget": func(w *table) { w.budget = false }, "model": func(w *table) { w.broken = true },
