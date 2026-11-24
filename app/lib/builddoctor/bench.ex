@@ -69,6 +69,7 @@ defmodule Builddoctor.Bench do
       define :newer_audits, action: :newer, args: [:audit_id]
       define :place_of, args: [:project], not_found_error?: false
       define :report_wait
+      define :expire_audits, action: :expire
       define :waiting_audits, action: :waiting
       define :plant_audit, action: :plant, args: [:project, :slot]
       define :planted_audits, action: :planted

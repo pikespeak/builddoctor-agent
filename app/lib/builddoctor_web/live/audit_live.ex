@@ -18,7 +18,8 @@ defmodule BuilddoctorWeb.AuditLive do
         ticking: nil,
         proof: false,
         asking: false,
-        message: nil
+        message: nil,
+        contact: contact()
       )
 
     case find(params) do
@@ -28,6 +29,13 @@ defmodule BuilddoctorWeb.AuditLive do
       audit ->
         if connected?(socket), do: BuilddoctorWeb.Endpoint.subscribe("audit:#{audit.id}")
         {:ok, socket |> assign(page_title: audit.repository) |> show(audit)}
+    end
+  end
+
+  defp contact do
+    case BuilddoctorWeb.Imprint.load() do
+      %{email: email} -> email
+      nil -> nil
     end
   end
 
@@ -246,6 +254,11 @@ defmodule BuilddoctorWeb.AuditLive do
       </figure>
       <p :if={@plan.jobs != [] and AuditView.picture?(@plan)} id="legend" class="text-base text-moss">
         {AuditView.legend(@view, @side)}
+      </p>
+      <p :if={foreign?(@view.audit)} id="maintainer" class="max-w-prose border-l-4 border-bark pl-4">
+        Is this your project? You can ask us to correct or remove this page.
+        <a :if={@contact} class="inline-block py-2 underline" href={"mailto:#{@contact}"}>{@contact}</a>
+        <a class="inline-block py-2 underline" href={~p"/privacy"}>What we store</a>
       </p>
       <section :if={@view.events != []}>
         <h2 class="font-display text-2xl font-bold">What the doctor did</h2>

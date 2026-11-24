@@ -281,7 +281,11 @@ defmodule BuilddoctorWeb.AuditView do
 
   @doc "The change of a Trial, line by line."
   def change(%{original: original, patch: patch}) when is_binary(original),
-    do: Builddoctor.Diff.lines(original, patch)
+    do:
+      for(
+        row <- Builddoctor.Diff.lines(original, patch),
+        do: %{row | text: Builddoctor.Redact.emails(row.text)}
+      )
 
   defp median_run([]), do: nil
 

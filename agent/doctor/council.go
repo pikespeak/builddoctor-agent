@@ -105,7 +105,7 @@ func (o OpenAI) poll(ctx context.Context, words string, input any) (map[string]V
 
 // QA votes on all statements.
 func (o OpenAI) QA(ctx context.Context, list []Statement, facts []Fact, workflow string) (map[string]Vote, int, int, error) {
-	return o.poll(ctx, qaWords, map[string]any{"statements": list, "all_facts": facts, "workflow": workflow})
+	return o.poll(ctx, qaWords, map[string]any{"statements": list, "all_facts": facts, "workflow": withoutEmails(workflow)})
 }
 
 // Safety votes on all statements; what the rules refuse is not sent to the model.
@@ -250,7 +250,7 @@ func (d Doctor) statements(ctx context.Context, au *Audit, facts []Fact) ([]Stat
 	}
 	for _, t := range trials {
 		if t.Status == "pending" && t.Verdict == "" {
-			list = append(list, Statement{t.ID, "Proposed change", t.Hypothesis, "", removed(t.Original, t.Patch), planOf(facts), "trial"})
+			list = append(list, Statement{t.ID, "Proposed change", t.Hypothesis, "", removed(withoutEmails(t.Original), withoutEmails(t.Patch)), planOf(facts), "trial"})
 		}
 	}
 	return list, nil

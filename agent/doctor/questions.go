@@ -34,7 +34,7 @@ Do not ask for what the facts already say. If the facts are enough, ask nothing.
 
 // Wonder returns the questions of one round and the tokens used.
 func (o OpenAI) Wonder(ctx context.Context, workflow string, jobs, workflows []string, facts []Fact) ([]Question, int, int, error) {
-	input, err := json.Marshal(map[string]any{"workflow": workflow, "jobs": jobs, "workflows": workflows, "facts": facts})
+	input, err := json.Marshal(map[string]any{"workflow": withoutEmails(workflow), "jobs": jobs, "workflows": workflows, "facts": facts})
 	if err != nil {
 		return nil, 0, 0, err
 	}

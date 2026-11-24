@@ -156,6 +156,29 @@ defmodule Builddoctor.Bench.Audit do
       change {Builddoctor.Bench.Changes.RemoveAll, except: @measurable}
     end
 
+    read :expired do
+      description "Foreign projects are kept for 90 days (owner, 2026-11-24)."
+
+      filter expr(
+               repository not in ^@measurable and state in [:examined, :stopped] and
+                 inserted_at < ago(90, :day)
+             )
+    end
+
+    destroy :expire_one do
+      description "Only from within expire; costs stay on record without the project."
+    end
+
+    action :expire, :integer do
+      description "Removes what is older than its period."
+
+      run fn _, _ ->
+        old = __MODULE__ |> Ash.Query.for_read(:expired) |> Ash.read!(authorize?: false)
+        Enum.each(old, &Ash.destroy!(&1, action: :expire_one, authorize?: false))
+        {:ok, length(old)}
+      end
+    end
+
     read :own do
       description "Audits of our own project, the newest first."
       filter expr(is_nil(slot) and repository in ^@measurable and state != :stopped)
@@ -232,7 +255,7 @@ defmodule Builddoctor.Bench.Audit do
     end
 
     # Only from within finish_examination.
-    policy action(:give_way) do
+    policy action([:give_way, :expire_one, :expire]) do
       forbid_if always()
     end
 

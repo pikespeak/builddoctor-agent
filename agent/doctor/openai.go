@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
+	"strings"
 )
 
 // OpenAI asks the model through the Sprites connector, without a key.
@@ -39,9 +41,24 @@ If no edit clearly helps, return no edits and say so in the hypothesis.
 Give up to five findings about failures, errors in the file, flaky runs, time, waiting, cost, security or maintenance, the one with the largest effect first; a workflow that keeps failing comes before lost seconds. A finding cites the ids of the facts it rests on. Use a number only if it stands in a fact you cite; never compute, estimate or add numbers. Say what the facts show in text and what to try in advice. Facts about waiting for a runner come before guesses about needs. A red fact tells since when a workflow fails, not why; without a cause in the facts, name the step and what to check first. Never describe how somebody could attack the project. Never advise to skip, weaken or delete tests. Leave out findings that only say something is fine, needed or should stay. If the facts show no problem, give no findings. Write plain sentences without Markdown.
 State the hypothesis in one or two plain sentences with the job times as evidence, and name the risk.`
 
+var (
+	email    = regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`)
+	usesPart = regexp.MustCompile(`^\s*(-\s+)?uses:\s*\S+`)
+)
+
+// withoutEmails leaves email addresses out of what a model gets. The name of an action stays.
+func withoutEmails(text string) string {
+	lines := strings.Split(text, "\n")
+	for i, l := range lines {
+		keep := usesPart.FindString(l)
+		lines[i] = keep + email.ReplaceAllString(l[len(keep):], "[email]")
+	}
+	return strings.Join(lines, "\n")
+}
+
 // Ask returns advice and the tokens used.
 func (o OpenAI) Ask(ctx context.Context, workflow string, jobs []Job, facts []Fact, kinds []string) (Advice, int, int, error) {
-	input, err := json.Marshal(map[string]any{"workflow": workflow, "jobs": settled(jobs), "facts": facts})
+	input, err := json.Marshal(map[string]any{"workflow": withoutEmails(workflow), "jobs": settled(jobs), "facts": facts})
 	if err != nil {
 		return Advice{}, 0, 0, err
 	}

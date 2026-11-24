@@ -40,6 +40,9 @@ defmodule BuilddoctorWeb.LegalTest do
     end
 
     assert conn |> get(~p"/imprint") |> html_response(200) =~ "A note."
+    audit = Builddoctor.Bench.plant_audit!("a/b", 1)
+    {:ok, view, _} = live(conn, ~p"/a/#{audit.id}")
+    assert has_element?(view, "#maintainer a[href='mailto:jane@example.org']")
   end
 
   test "without a file the page says so", %{conn: conn} do

@@ -16,7 +16,10 @@ config :builddoctor, Oban,
   lifeline: [rescue_after: {2, :hours}],
   pruner: [max_age: {1, :day}],
   repo: Builddoctor.Repo,
-  cron: [crontab: []]
+  cron: [
+    # The Sprite sleeps, so the start counts as well as the hour.
+    crontab: [{"@reboot", Builddoctor.Expire}, {"7 * * * *", Builddoctor.Expire}]
+  ]
 
 config :mime,
   extensions: %{"json" => "application/vnd.api+json"},

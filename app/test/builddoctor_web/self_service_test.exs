@@ -213,6 +213,8 @@ defmodule BuilddoctorWeb.SelfServiceTest do
     {:ok, view, _} = live(conn, ~p"/a/#{audit.id}")
     assert has_element?(view, "#suggestion", "Make the marked changes")
     assert has_element?(view, "#suggestion", "at commit eeeeeee")
+    assert has_element?(view, "#maintainer", "Is this your project?")
+    refute has_element?(view, "#maintainer a[href^=mailto]")
     assert has_element?(view, "#suggestion button", "Copy the command")
   end
 end

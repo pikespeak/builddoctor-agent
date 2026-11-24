@@ -21,13 +21,15 @@ defmodule BuilddoctorWeb.LegalHTML do
     <main class="mx-auto grid max-w-3xl gap-6 px-4 py-6">
       <Layouts.brand />
       <h1 class="font-display text-4xl font-bold">Privacy</h1>
-      <p>As of November 24, 2026. This page has no accounts, no advertising and no analytics.</p>
+      <p>
+        As of November 24, 2026. No visitor account is required. There is no advertising and no analytics.
+      </p>
       <.part title="Who is responsible">
         <.contact who={@who} />
       </.part>
       <.part title="When you open the page">
         <p>
-          The site runs on a Fly.io Sprite. Your IP address and request are processed to serve the site. Our own log keeps the time, the address of the page inside this site and technical details, but not your IP address. What Fly.io records is described in <a
+          The site runs on a Fly.io Sprite. Your IP address and request are processed to serve the site. Our examination records do not identify the visitor. Our application log keeps the time, the address of the page inside this site, what you enter into the form and technical details; handling a request also involves connection data at our hosting provider. What Fly.io records is described in <a
             class="underline"
             href="https://fly.io/legal/privacy-policy/"
             rel="noopener"
@@ -36,17 +38,17 @@ defmodule BuilddoctorWeb.LegalHTML do
       </.part>
       <.part title="Cookie and browser storage">
         <p>
-          One signed cookie protects forms and, for the operator, holds the time of the sign-in. The site's JavaScript uses browser storage to keep the live connection working. Both are technically necessary. Nothing is used to follow you.
+          The session cookie _builddoctor_key protects forms and, for the operator, holds the time of the sign-in. It ends with the session of your browser. The site's JavaScript uses session storage and local storage to recover the live connection and to navigate. We consider this strictly necessary for the service you asked for (Section 25(2) no. 2 TDDDG). Nothing is used to follow you.
         </p>
       </.part>
       <.part title="When you enter a project">
         <p>
-          We do not store who entered it. We store the name and commit of the project, workflow details (the complete file before and after, if a change is proposed), job times, computed facts, findings, proposed workflow changes, review decisions, events and records of model use. Public results include the facts, the findings and changes that passed the council, and every measured change; some records are visible to the operator or the agent only. From GitHub we request public data of the project: metadata, workflow files, runs, jobs, steps, commit IDs and check-run annotations. GitHub therefore learns which project we read. These data can contain names that their authors made public. Only for our own test project do we also write branches and start runs. The legal basis is our legitimate interest in examining public pipelines (Art. 6(1)(f) GDPR).
+          We do not store who entered it. We store the name and commit of the project, workflow details (the complete file before and after, if a change is proposed), job times, computed facts, findings, proposed workflow changes, review decisions, events and records of model use. Public results include the facts, the findings and changes that passed the council, and every measured change; some records are visible to the operator or the agent only. From GitHub we request public data of the project: metadata, workflow files, runs, jobs, steps, commit IDs and check-run annotations. GitHub therefore learns which project we read. These data may contain names, usernames, email addresses and other personal information, also of people who did not enter the project. Only for our own test project do we also write branches and start runs. Our legitimate interests (Art. 6(1)(f) GDPR) are to analyze public CI workflows, to suggest improvements with the help of AI and to show measured results publicly.
         </p>
       </.part>
       <.part title="Models">
         <p>
-          We send the workflow file, job names, results and times, and the computed facts to OpenAI through a Fly.io connector. For the review we also send the findings and proposed changes. The requests ask OpenAI not to store the response for later retrieval. We do not include data of your visit, but public repository content can contain personal information. See <a
+          We send the workflow file, job names, results and times, and the computed facts to OpenAI through a Fly.io connector. For the review we also send the findings and proposed changes. The requests ask OpenAI not to store the response for later retrieval. This does not by itself prevent retention for abuse monitoring or other operational purposes. We do not include data of your visit, but public repository content can contain personal information. See <a
             class="underline"
             href="https://openai.com/policies/privacy-policy/"
             rel="noopener"
@@ -55,7 +57,7 @@ defmodule BuilddoctorWeb.LegalHTML do
       </.part>
       <.part title="Storage and backups">
         <p>
-          Results stay until they are removed. Database backups are stored on the Sprite, where the seven newest are kept, and in the storage service Tigris, where they are not deleted automatically. Removing a project does not remove it from the backups; that is a separate manual step, which you can ask for.
+          Examinations of other projects are deleted after 90 days, and database backups on the Sprite and in the storage service Tigris after 30 days; the three newest backups of each place are always kept. Application logs stay on the Sprite and are shortened by hand. The Sprite sleeps when nobody uses it, so a deletion can happen later, when it wakes up. Our own measured trials stay as long as the project runs. If you ask for a removal, we also remove the project from the backups by hand.
         </p>
       </.part>
       <.part title="Other countries">
@@ -63,9 +65,14 @@ defmodule BuilddoctorWeb.LegalHTML do
           Fly.io, OpenAI, GitHub and Tigris are based in the United States or may process data there.
         </p>
       </.part>
+      <.part title="Your right to object">
+        <p class="font-bold">
+          You may object at any time, on grounds relating to your particular situation, to processing based on Art. 6(1)(f) GDPR, by writing to the email address above. We will stop that processing unless we demonstrate compelling legitimate grounds that override your interests, rights and freedoms, or need the data for legal claims. This applies to everybody whose data are concerned, not only to maintainers.
+        </p>
+      </.part>
       <.part title="Your rights">
         <p>
-          You can ask for access, correction, deletion and restriction, and object to the processing. You can also complain to a data protection authority. Maintainers can ask us to remove their project at any time; an email is enough.
+          You can ask for access, correction, deletion, restriction and data portability under the conditions of the GDPR. You can also complain to a data protection authority. Maintainers can ask us to remove their project at any time; an email is enough.
         </p>
       </.part>
       <Layouts.legal />
