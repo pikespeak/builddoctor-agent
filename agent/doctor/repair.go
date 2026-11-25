@@ -39,37 +39,23 @@ func repair(workflow string, jobs []Job) (patch, text string, limit Fact, ok boo
 	}
 	parts, risks := []string{}, []string{}
 	if limited > 0 {
-		parts = append(parts, fmt.Sprintf("gives %d %s a time limit of three times the longest duration in this run, rounded up to whole minutes, between 10 and 360", limited, word(limited, "job")))
+		parts = append(parts, fmt.Sprintf("gives %s its own time limit: three times its longest recorded duration in this run, rounded up to whole minutes, with a minimum of 10 and a maximum of 360 minutes", perJob(limited)))
 		risks = append(risks, "a job that needs longer than its limit is stopped")
 	}
 	if limited < len(edits) {
 		parts = append(parts, "lets a newer push to a pull request end the older run")
 		risks = append(risks, "the older run of a pull request does not finish")
 	}
-	text = "This change " + strings.Join(parts, " and ") + ". It does not make any step faster. The risk: " + strings.Join(risks, ", and ") + "."
-	if gone := answered(workflow, patch); len(gone) > 0 {
-		text += " It answers what the grade takes points off for: " + strings.Join(gone, " and ") + "."
-	}
+	text = "This change " + strings.Join(parts, ", and ") + ". It does not make any step faster. The risk: " + strings.Join(risks, ", and ") + "."
 	if limited > 0 {
 		limit = Fact{ID: "limits", Text: cut("Longest duration of the jobs read and the limit computed from it: "+strings.Join(sized, "; ")+".", 300)}
 	}
 	return patch, text, limit, true
 }
 
-// answered names the facts with a deduction that the changed file no longer has.
-func answered(before, after string) []string {
-	has, still := map[string]bool{}, map[string]bool{}
-	for _, f := range written(before) {
-		has[f.ID] = true
+func perJob(n int) string {
+	if n == 1 {
+		return "1 job"
 	}
-	for _, f := range written(after) {
-		still[f.ID] = true
-	}
-	out := []string{}
-	for _, k := range [][2]string{{"timeout", "jobs without a time limit"}, {"concurrency", "no concurrency rule"}} {
-		if has[k[0]] && !still[k[0]] {
-			out = append(out, k[1])
-		}
-	}
-	return out
+	return fmt.Sprintf("each of %d jobs", n)
 }

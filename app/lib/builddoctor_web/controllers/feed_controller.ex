@@ -11,7 +11,7 @@ defmodule BuilddoctorWeb.FeedController do
         conn
         |> put_resp_content_type("application/atom+xml")
         |> put_resp_header("x-robots-tag", "noindex, nofollow")
-        |> put_resp_header("cache-control", "public, max-age=300")
+        |> put_resp_header("cache-control", "no-store")
         |> send_resp(200, feed(newest, audits))
 
       _ ->

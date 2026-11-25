@@ -18,7 +18,7 @@ func TestRepair(t *testing.T) {
 	if !ok || strings.Count(patch, "timeout-minutes") != 2 || !strings.Contains(patch, "timeout-minutes: 10") || !strings.Contains(patch, "timeout-minutes: 45") || !strings.Contains(patch, "cancel-in-progress") || !strings.Contains(patch, "# keep me") {
 		t.Fatal(patch, text, ok)
 	}
-	if !strings.Contains(text, "gives 2 jobs a time limit") || !strings.Contains(text, "answers what the grade takes points off for: jobs without a time limit and no concurrency rule") || !strings.Contains(text, "does not make any step faster") {
+	if !strings.Contains(text, "gives each of 2 jobs its own time limit") || strings.Contains(text, "grade") || !strings.Contains(text, "does not make any step faster") {
 		t.Fatal(text)
 	}
 	if limit.ID != "limits" || limit.Text != "Longest duration of the jobs read and the limit computed from it: vet 30 s, limit 10 minutes; test 900 s, limit 45 minutes." || len(planOf([]Fact{limit, {ID: "plan"}, {ID: "run"}})) != 2 {
@@ -31,9 +31,9 @@ func TestRepair(t *testing.T) {
 		t.Fatal("the safety rules", why)
 	}
 
-	// A job whose length is not known gets no limit, and then no deduction is said to be answered.
+	// A job whose length is not known gets no limit.
 	patch, text, limit, ok = repair(twoJobs, []Job{took("vet", 30)})
-	if !ok || strings.Count(patch, "timeout-minutes") != 1 || !strings.Contains(text, "gives 1 job a") || strings.Contains(text, "without a time limit") || !strings.Contains(text, "no concurrency rule") {
+	if !ok || strings.Count(patch, "timeout-minutes") != 1 || !strings.Contains(text, "gives 1 job its own") {
 		t.Fatal(patch, text, ok)
 	}
 	// Only limits: pushes to a branch are never ended.
@@ -64,7 +64,7 @@ func TestRepairStopsAtTenEdits(t *testing.T) {
 		jobs = append(jobs, took(n+"x", 60))
 	}
 	patch, text, _, ok := repair(file, jobs)
-	if !ok || strings.Count(patch, "timeout-minutes") != 10 || strings.Contains(text, "points off") {
+	if !ok || strings.Count(patch, "timeout-minutes") != 10 || !strings.Contains(text, "each of 10 jobs") {
 		t.Fatal(patch, text, ok)
 	}
 }
