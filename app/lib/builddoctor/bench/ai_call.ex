@@ -14,7 +14,7 @@ defmodule Builddoctor.Bench.AiCall do
     "gpt-6.2-sol" => {2, 10},
     "gpt-image-2.6-flare" => {5, 30}
   }
-  @limit 27_000_000
+  @limit 100_000_000
 
   json_api do
     type "ai_call"

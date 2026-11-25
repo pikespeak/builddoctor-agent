@@ -54,7 +54,7 @@ defmodule BuilddoctorWeb.SubscribeLive do
           <h2 class="font-display text-3xl uppercase">What you can have today</h2>
           <ul class="grid list-disc gap-2 pl-6">
             <li>
-              A printed edition of any public project with a suitable run. The daily limits apply.
+              A printed edition of any public project with a suitable run. Limits apply.
             </li>
             <li>A patch, if the council passes one. You open the pull request yourself.</li>
             <li>A feed for every project with an edition, for your feed reader.</li>

@@ -174,7 +174,7 @@ defmodule BuilddoctorWeb.AuditLive do
         "Today's free examinations are used up. New ones start at midnight UTC."
 
       message =~ "error.limit.visitor" ->
-        "You have started five examinations today. Please come back tomorrow."
+        "You have used up your examinations for today. Please come back tomorrow."
 
       message =~ "error.limit.busy" ->
         "Several projects are being read right now. Please try again in a minute."

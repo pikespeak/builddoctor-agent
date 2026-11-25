@@ -8,15 +8,25 @@ defmodule Builddoctor.Bench.Changes.VisitorLimit do
   require Ash.Query
 
   alias Builddoctor.Bench.Audit
+  alias Builddoctor.TestPhase
 
   @per_day 20
   # The days of the jury (owner, 2026-11-24).
   @jury [~D[2026-11-30], ~D[2026-12-01]]
   @jury_per_day 40
-  @at_once 3
-  @per_visitor 5
 
-  def per_day(day), do: if(day in @jury, do: @jury_per_day, else: @per_day)
+  @doc "An atom is greater than every number, so :infinity never is reached."
+  def per_day(day) do
+    cond do
+      TestPhase.on?(day) -> :infinity
+      day in @jury -> @jury_per_day
+      true -> @per_day
+    end
+  end
+
+  # The agent works on five at once.
+  def at_once(day), do: if(TestPhase.on?(day), do: 5, else: 3)
+  def per_visitor(day), do: if(TestPhase.on?(day), do: 20, else: 5)
 
   @impl true
   def change(changeset, _opts, %{actor: %{role: :requester}}), do: changeset
@@ -40,18 +50,18 @@ defmodule Builddoctor.Bench.Changes.VisitorLimit do
 
       cond do
         started >= per_day(today) -> refuse(changeset, "error.limit.day")
-        running >= @at_once -> refuse(changeset, "error.limit.busy")
-        not mine?(changeset) -> refuse(changeset, "error.limit.visitor")
+        running >= at_once(today) -> refuse(changeset, "error.limit.busy")
+        not mine?(changeset, today) -> refuse(changeset, "error.limit.visitor")
         true -> Ash.Changeset.force_change_attribute(changeset, :by_visitor, true)
       end
     end)
   end
 
   # Without a known address only the limits for all apply.
-  defp mine?(changeset) do
+  defp mine?(changeset, today) do
     case Ash.Changeset.get_argument(changeset, :visitor) do
       nil -> true
-      key -> not changeset.valid? or Builddoctor.VisitorCount.take(key, @per_visitor)
+      key -> not changeset.valid? or Builddoctor.VisitorCount.take(key, per_visitor(today))
     end
   end
 

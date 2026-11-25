@@ -121,6 +121,9 @@ defmodule BuilddoctorWeb.PictureTest do
     assert {:ok, _} = order(first, 2)
     assert {:error, error} = order(audit("acme/last", 99))
     assert Exception.message(error) =~ "error.picture.day"
+    Application.put_env(:builddoctor, :test_phase_until, Date.utc_today())
+    on_exit(fn -> Application.put_env(:builddoctor, :test_phase_until, nil) end)
+    assert {:ok, _} = order(audit("acme/more", 98))
   end
 
   test "a new edition takes the rarest fitting figure and keeps it" do
@@ -198,7 +201,7 @@ defmodule BuilddoctorWeb.PictureTest do
   test "no budget, no picture" do
     audit = audit()
 
-    for _ <- 1..9 do
+    for _ <- 1..34 do
       Bench.record_ai_call!(
         %{
           audit_id: audit.id,

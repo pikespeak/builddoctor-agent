@@ -64,7 +64,7 @@ defmodule BuilddoctorWeb.VisitorTest do
       |> put_req_header("x-forwarded-for", "203.0.113.99")
       |> put_req_header("x-real-ip", "203.0.113.99")
 
-    assert start(forged, "a/b6") =~ "You have started five examinations today"
+    assert start(forged, "a/b6") =~ "You have used up your examinations for today"
     old = hd(Bench.planted_audits!())
 
     Builddoctor.Repo.query!(
@@ -73,7 +73,7 @@ defmodule BuilddoctorWeb.VisitorTest do
     )
 
     {:ok, view, _} = live(from(conn, ip), ~p"/a/#{old.id}")
-    assert view |> element("button", "Examine again") |> render_click() =~ "You have started five"
+    assert view |> element("button", "Examine again") |> render_click() =~ "You have used up your"
     assert {:error, {:live_redirect, _}} = start(from(conn, "198.51.100.250"), "a/b7")
   end
 

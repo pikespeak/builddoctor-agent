@@ -183,7 +183,9 @@ defmodule Builddoctor.BenchTest do
     assert Bench.budget_left!(@agent)
     assert {:error, _} = Bench.record_ai_call(%{call | model: "unknown"}, @agent)
     assert {:error, %Ash.Error.Forbidden{}} = Bench.record_ai_call(call)
-    for _ <- 1..7, do: Bench.record_ai_call!(%{call | output_tokens: 100_000}, @agent)
+    for _ <- 1..24, do: Bench.record_ai_call!(%{call | output_tokens: 100_000}, @agent)
+    assert Bench.budget_left!(@agent)
+    for _ <- 1..2, do: Bench.record_ai_call!(%{call | output_tokens: 100_000}, @agent)
     refute Bench.budget_left!(@agent)
   end
 end

@@ -9,6 +9,9 @@ import Config
 
 config :ash_oban, pro?: false
 
+# The last day (UTC) without a daily total.
+config :builddoctor, test_phase_until: ~D[2026-12-01]
+
 config :builddoctor, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,

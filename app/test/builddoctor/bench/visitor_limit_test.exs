@@ -62,6 +62,8 @@ defmodule Builddoctor.Bench.VisitorLimitTest do
 
   test "the days of the jury allow more" do
     assert VisitorLimit.per_day(~D[2026-11-29]) == 20
+    assert VisitorLimit.at_once(~D[2026-11-29]) == 3
+    assert VisitorLimit.per_visitor(~D[2026-11-29]) == 5
     assert VisitorLimit.per_day(~D[2026-11-30]) == 40
     assert VisitorLimit.per_day(~D[2026-12-01]) == 40
     assert VisitorLimit.per_day(~D[2026-12-02]) == 20
@@ -69,5 +71,22 @@ defmodule Builddoctor.Bench.VisitorLimitTest do
 
   test "nobody sets the mark by hand" do
     assert {:error, _} = Bench.plant_audit("a/b", 1, %{by_visitor: false})
+  end
+
+  test "the test phase has no daily total and ends by itself" do
+    Application.put_env(:builddoctor, :test_phase_until, ~D[2026-12-01])
+    on_exit(fn -> Application.put_env(:builddoctor, :test_phase_until, nil) end)
+
+    for day <- [~D[2026-11-25], ~D[2026-12-01]] do
+      assert Builddoctor.TestPhase.on?(day)
+      refute 1_000_000 >= VisitorLimit.per_day(day)
+      assert VisitorLimit.at_once(day) == 5
+      assert VisitorLimit.per_visitor(day) == 20
+    end
+
+    refute Builddoctor.TestPhase.on?(~D[2026-12-02])
+    assert VisitorLimit.per_day(~D[2026-12-02]) == 20
+    assert VisitorLimit.at_once(~D[2026-12-02]) == 3
+    assert VisitorLimit.per_visitor(~D[2026-12-02]) == 5
   end
 end

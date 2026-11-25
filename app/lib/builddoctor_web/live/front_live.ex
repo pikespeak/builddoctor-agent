@@ -17,7 +17,7 @@ defmodule BuilddoctorWeb.FrontLive do
     "error.slot.taken" => "Somebody was faster. Please choose another page.",
     "error.limit.day" => "Today's free examinations are used up. New ones start at midnight UTC.",
     "error.limit.visitor" =>
-      "You have started five examinations today. Please come back tomorrow.",
+      "You have used up your examinations for today. Please come back tomorrow.",
     "error.limit.busy" =>
       "Several projects are being read right now. Please try again in a minute.",
     "error.slot.invalid" => "Please choose a blank page."
