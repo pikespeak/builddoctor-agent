@@ -1,5 +1,5 @@
 defmodule Builddoctor.Bench.ExpireTest do
-  use Builddoctor.DataCase, async: true
+  use Builddoctor.DataCase, async: false
   use Oban.Testing, repo: Builddoctor.Repo
 
   alias Builddoctor.Bench

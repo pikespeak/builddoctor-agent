@@ -25,15 +25,68 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/builddoctor"
 import topbar from "../vendor/topbar"
 
+const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches
+// One text after the other, in the order of the page.
+let desk = Promise.resolve()
+const later = ms => new Promise(done => setTimeout(done, ms))
+
+async function write(el, text) {
+  const [shown, pen, rest] = [0, 1, 2].map(() => document.createElement("span"))
+  pen.className = "pen"
+  rest.className = "unwritten"
+  for (let i = 0; i <= text.length && el.isConnected; i++) {
+    shown.textContent = text.slice(0, i)
+    rest.textContent = text.slice(i)
+    if (i === 0) el.replaceChildren(shown, pen, rest)
+    await later(Number(el.dataset.pace))
+  }
+  el.textContent = text
+}
+
+const Typed = {
+  mounted() {
+    if (this.el.dataset.live !== "true" || calm()) return
+    const text = this.el.textContent
+    const rest = document.createElement("span")
+    rest.className = "unwritten"
+    rest.textContent = text
+    this.el.replaceChildren(rest)
+    // The headline comes last but stands on top: it waits for no article.
+    if (this.el.closest(".headline")) write(this.el, text)
+    else desk = desk.then(() => write(this.el, text))
+  },
+}
+
+const Photo = {
+  mounted() {
+    const img = this.el.querySelector("img"), button = this.el.querySelector("button")
+    const still = img.src
+    let on = false
+    const set = value => {
+      on = value
+      img.src = on ? img.dataset.moving : still
+      button.textContent = on ? "Pause" : "Play"
+      button.setAttribute("aria-label", `${button.textContent} the picture`)
+    }
+    button.hidden = false
+    button.onclick = () => set(!on)
+    if (this.el.dataset.live === "true") this.el.classList.add("developing")
+    if (calm()) return
+    if (this.el.dataset.auto === "true") return set(true)
+    this.el.onpointerenter = e => { if (e.pointerType === "mouse") set(true) }
+    this.el.onpointerleave = e => { if (e.pointerType === "mouse") set(false) }
+  },
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, Typed, Photo},
 })
 
 // Show progress bar on live navigation and form submits
-topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
+topbar.config({barColors: {0: "#b8200f"}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 

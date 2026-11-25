@@ -22,38 +22,68 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-paper: #f1ece0;
-  --color-bark: #2a2620;
-  --color-moss: #5d5849;
-  --color-sand: #e6dfcc;
-  --color-leaf: #4f8f57;
-  --color-grass: #5f8a5c;
-  --color-way: #f3dfad;
-  --color-sun: #f2b84b;
-  --color-violet: #8a5fa8;
-  --color-soil: #37603f;
-  --color-madder: #8e3022;
+  --color-paper: #fffdf7;
+  --color-bark: #17130f;
+  --color-moss: #514a40;
+  --color-sand: #eadfca;
+  --color-leaf: #1f6f78;
+  --color-way: #f4c63d;
+  --color-sun: #f4c63d;
+  --color-madder: #b8200f;
   --color-removed: #f6d9d3;
-  --color-added: #dbe8cf;
-  --color-primary-500: #a33a2a;
-  --color-primary-600: #8e3022;
-  --color-primary-700: #74261b;
-  --font-display: Georgia, "Times New Roman", serif;
+  --color-added: #cfe6e6;
+  --color-primary-500: #b8200f;
+  --color-primary-600: #9d1b0d;
+  --color-primary-700: #7c150a;
+  --font-display: "Anton", Impact, "Arial Narrow", sans-serif;
+  --font-sans: "Libre Franklin", Arial, sans-serif;
 }
 
-/* A tree grows out of its seed; the server only says queued, running or done. */
-.tree { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 1.2s ease-out; }
-.tree[data-stage="queued"] { transform: scale(0.1); }
-.tree[data-stage="running"] { transform: scale(0.72); transition-duration: 20s; }
-.tree[data-stage="done"] { transform: scale(1); }
-.tree-label[data-stage="queued"] { opacity: 0.45; }
-.seed:hover rect, .seed[data-chosen="true"] rect { fill: rgb(255 255 255 / 0.28); }
-.doctor { transition: transform 1.2s ease-in-out; }
-.badge { display: none; }
-/* Text in the picture shrinks with it; on a phone numbers and the list below replace it. */
-@media (max-width: 639px) {
-  .badge { display: inline; }
-  .tag, .axis, .caption { display: none; }
-}
+@font-face { font-family: "Anton"; src: url("/fonts/anton.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Libre Franklin"; src: url("/fonts/libre-franklin-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Libre Franklin"; src: url("/fonts/libre-franklin-700.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
+/* A printed sheet on a yellow counter. Anton has one weight. */
+main { background: var(--color-paper); }
+.font-display { font-weight: 400 !important; text-wrap: balance; }
+.masthead { display: inline-grid; background: var(--color-leaf); color: #fff; padding: .4rem 1.2rem .8rem; transform: rotate(-2deg); font: 400 clamp(3.6rem, 9vw, 6rem)/1.1 var(--font-display); }
+.masthead i { display: inline-block; font-style: normal; color: var(--color-sun); transform: rotate(9deg); margin-left: .06em; }
+.masthead small { font: 700 1rem/1.3 var(--font-sans); }
+.lead { container-type: inline-size; }
+.headline { font: 400 clamp(2.4rem, 9.4cqw, 7rem)/1.06 var(--font-display); text-transform: uppercase; text-wrap: balance; overflow-wrap: anywhere; }
+.headline[data-long="true"] { font-size: clamp(2rem, 6.4cqw, 4.6rem); }
+
+/* Text that is written while somebody watches; the rest keeps its place. */
+.unwritten { opacity: 0; }
+.pen { display: inline-block; width: 0; }
+.pen::after { content: ""; display: inline-block; width: .5em; height: .9em; background: var(--color-madder); vertical-align: -.08em; }
+
+/* Fewer than three flashes a second. */
+.lines { display: grid; gap: 11px; align-content: start; }
+.lines i { display: block; height: 13px; background: #b9b09c; animation: flicker 1.7s infinite; }
+.lines i.h { height: 2.2rem; background: #8d8573; }
+.lines.huge i { height: clamp(2.4rem, 9.4cqw, 7rem); background: #8d8573; }
+@keyframes flicker { 0%, 100% { opacity: .85; } 22% { opacity: .35; } 38% { opacity: .7; } 61% { opacity: .25; } 80% { opacity: .95; } }
+
+.press-photo { position: relative; }
+.press-photo img, .press-photo .dark { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; border: 3px solid var(--color-bark); background: var(--color-bark); }
+.press-photo .dark { background: radial-gradient(circle at 50% 40%, #5b1710, var(--color-bark) 70%); }
+.press-photo .dark[data-busy="true"] { animation: tray 1.2s infinite alternate; }
+@keyframes tray { to { transform: rotate(.7deg); } }
+.press-photo button { position: absolute; right: 10px; bottom: 2.6rem; min-height: 2.75rem; padding: 0 1rem; background: var(--color-bark); color: #fff; font: 400 1.1rem/1 var(--font-display); cursor: pointer; }
+.press-photo button[hidden] { display: none; }
+.press-photo figcaption { font-size: .95rem; padding-top: 6px; }
+.press-photo.developing img { animation: develop 2.6s ease-out; }
+@keyframes develop { from { filter: brightness(0); } }
+
+a:focus-visible, button:focus-visible { outline: 4px solid var(--color-leaf); outline-offset: 3px; }
+.page { display: grid; place-items: center; min-height: 2.75rem; border: 1px solid var(--color-bark); font: 400 1rem/1 var(--font-display); cursor: pointer; }
+.page:hover, .page[data-chosen="true"] { background: var(--color-sun); }
+a.page { background: var(--color-bark); color: var(--color-sun); }
 .pc-button { min-height: 2.75rem; }
-@media (prefers-reduced-motion: reduce) { .tree, .doctor { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .lines i, .press-photo .dark, .press-photo.developing img { animation: none !important; } }
+.pc-label--required::after { color: inherit !important; }
+
+.stamp { display: inline-grid; place-items: center; flex: none; min-width: 3.4rem; height: 3.4rem; padding: 0 .5rem; border: 4px double var(--color-madder); color: var(--color-madder); background: var(--color-paper); font: 400 1.6rem/1 var(--font-display); transform: rotate(-6deg); }
+.stamp.big { min-width: 6rem; height: 6rem; font-size: 3rem; border-width: 6px; }
+.stamp.blank { color: var(--color-moss); border-color: var(--color-moss); }

@@ -53,33 +53,41 @@ func (p Public) trouble(ctx context.Context, base string, all map[string][]past,
 		}
 	}
 	slices.SortStableFunc(list, func(a, b red) int { return len(b.runs) - len(a.runs) })
+	looked := []func() ([]Fact, error){}
 	for i, r := range list[:min(maxRed, len(list))] {
-		n, name, first := i+1, plainName(path.Base(r.path)), r.runs[len(r.runs)-1]
-		f := Fact{ID: fmt.Sprint("red", n), Text: fmt.Sprintf("Workflow %s: the newest %d finished runs on the default branch failed. Canceled runs are left out. The run before them succeeded.", name, len(r.runs)), Commit: first.SHA}
-		if r.all {
-			f.Text, f.Commit = fmt.Sprintf("Workflow %s: all %d finished runs on the default branch that were read failed.", name, r.readable), ""
-		}
-		out = append(out, f)
-		newest, ok := p.failed(ctx, base, r.runs[0].ID)
-		if !ok {
-			continue
-		}
-		f = Fact{ID: fmt.Sprint("redstep", n), Text: fmt.Sprintf("Workflow %s: in its newest failed run, step %q of job %q failed.", name, newest.step, newest.job)}
-		if i == 0 {
-			if before, ok := p.failed(ctx, base, r.runs[1].ID); ok {
-				if before.step == newest.step && before.job == newest.job {
-					f.Text += " The same step failed in the failed run before it."
-				} else {
-					f.Text += " Another step failed in the failed run before it."
+		looked = append(looked, async(func() (facts []Fact, _ error) {
+			n, name, first := i+1, plainName(path.Base(r.path)), r.runs[len(r.runs)-1]
+			f := Fact{ID: fmt.Sprint("red", n), Text: fmt.Sprintf("Workflow %s: the newest %d finished runs on the default branch failed. Canceled runs are left out. The run before them succeeded.", name, len(r.runs)), Commit: first.SHA}
+			if r.all {
+				f.Text, f.Commit = fmt.Sprintf("Workflow %s: all %d finished runs on the default branch that were read failed.", name, r.readable), ""
+			}
+			facts = append(facts, f)
+			newest, ok := p.failed(ctx, base, r.runs[0].ID)
+			if !ok {
+				return facts, nil
+			}
+			f = Fact{ID: fmt.Sprint("redstep", n), Text: fmt.Sprintf("Workflow %s: in its newest failed run, step %q of job %q failed.", name, newest.step, newest.job)}
+			if i == 0 {
+				if before, ok := p.failed(ctx, base, r.runs[1].ID); ok {
+					if before.step == newest.step && before.job == newest.job {
+						f.Text += " The same step failed in the failed run before it."
+					} else {
+						f.Text += " Another step failed in the failed run before it."
+					}
 				}
 			}
-		}
-		out = append(out, f)
-		if i == 0 {
-			if why := p.cause(ctx, base, newest.id); why != "" {
-				out = append(out, Fact{ID: "cause", Text: fmt.Sprintf("Workflow %s: GitHub's note on that job says %s.", name, why)})
+			facts = append(facts, f)
+			if i == 0 {
+				if why := p.cause(ctx, base, newest.id); why != "" {
+					facts = append(facts, Fact{ID: "cause", Text: fmt.Sprintf("Workflow %s: GitHub's note on that job says %s.", name, why)})
+				}
 			}
-		}
+			return facts, nil
+		}))
+	}
+	for _, wait := range looked {
+		facts, _ := wait()
+		out = append(out, facts...)
 	}
 	// The examined workflow may be green now and still fail now and then.
 	if !slices.ContainsFunc(list[:min(maxRed, len(list))], func(r red) bool { return r.path == examined }) {

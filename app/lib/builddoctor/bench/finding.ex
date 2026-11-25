@@ -49,6 +49,13 @@ defmodule Builddoctor.Bench.Finding do
   end
 
   policies do
+    # In the reduced mode a Visitor sees only our own project.
+    policy action_type(:read) do
+      authorize_if Builddoctor.Bench.Checks.FullMode
+      authorize_if actor_present()
+      authorize_if expr(is_nil(audit.slot) and audit.repository in ["pikespeak/ci-patient"])
+    end
+
     # Nobody outside sees what the council has not passed.
     policy action_type(:read) do
       authorize_if actor_attribute_equals(:role, :agent)

@@ -75,6 +75,7 @@ defmodule Builddoctor.Bench.Audit do
     create :examine_again do
       accept []
       argument :audit_id, :uuid, allow_nil?: false
+      argument :visitor, :string, constraints: [max_length: 40]
       change Builddoctor.Bench.Changes.Again
       change Builddoctor.Bench.Changes.VisitorLimit
     end
@@ -98,6 +99,17 @@ defmodule Builddoctor.Bench.Audit do
       prepare build(sort: [waiting_until: :desc], limit: 1)
     end
 
+    read :archive do
+      description "Every stored result, the newest first."
+      filter expr(state in [:examined, :done])
+      pagination offset?: true, default_limit: 24, max_page_size: 24
+
+      prepare build(
+                sort: [inserted_at: :desc, id: :asc],
+                load: [:trials, :findings, :lines, :grade]
+              )
+    end
+
     read :place_of do
       argument :project, :string, allow_nil?: false
       get? true
@@ -108,15 +120,17 @@ defmodule Builddoctor.Bench.Audit do
       description "A Visitor gives a public repository one of the free places."
       accept [:slot]
       argument :project, :string, allow_nil?: false, constraints: [max_length: 200]
+      argument :visitor, :string, constraints: [max_length: 40]
       validate present(:slot), message: "error.slot.invalid"
       change Builddoctor.Bench.Changes.Plant
+      change Builddoctor.Bench.Changes.OnceADay
       change Builddoctor.Bench.Changes.VisitorLimit
       validate match(:repository, @name), message: "error.repository.invalid"
     end
 
     read :planted do
       filter expr(not is_nil(slot))
-      prepare build(sort: [slot: :asc], load: [:trials, :findings])
+      prepare build(sort: [slot: :asc], load: [:trials, :findings, :pictures, :lines, :grade])
     end
 
     update :identify do
@@ -231,8 +245,11 @@ defmodule Builddoctor.Bench.Audit do
   end
 
   policies do
+    # In the reduced mode a Visitor sees only our own project.
     policy action_type(:read) do
-      authorize_if always()
+      authorize_if Builddoctor.Bench.Checks.FullMode
+      authorize_if actor_present()
+      authorize_if expr(is_nil(slot) and repository in ^@measurable)
     end
 
     policy action([
@@ -251,7 +268,8 @@ defmodule Builddoctor.Bench.Audit do
     end
 
     policy action([:plant, :examine_again]) do
-      authorize_if always()
+      authorize_if Builddoctor.Bench.Checks.FullMode
+      authorize_if actor_attribute_equals(:role, :requester)
     end
 
     # Only from within finish_examination.
@@ -273,9 +291,9 @@ defmodule Builddoctor.Bench.Audit do
     module BuilddoctorWeb.Endpoint
     prefix "audit"
     publish_all :update, [:id]
-    publish_all :update, "forest"
-    publish_all :create, "forest"
-    publish_all :destroy, "forest"
+    publish_all :update, "front"
+    publish_all :create, "front"
+    publish_all :destroy, "front"
   end
 
   attributes do
@@ -334,10 +352,6 @@ defmodule Builddoctor.Bench.Audit do
     timestamps()
   end
 
-  def measurable, do: @measurable
-  def places, do: @places
-  def max_errors, do: @max_errors
-
   relationships do
     belongs_to :replaces, Builddoctor.Bench.Audit
     has_many :runs, Builddoctor.Bench.Run
@@ -347,7 +361,21 @@ defmodule Builddoctor.Bench.Audit do
       sort position: :asc
     end
 
+    has_many :pictures, Builddoctor.Bench.Picture do
+      sort place: :asc
+    end
+
+    has_many :lines, Builddoctor.Bench.Line
+
     has_many :events, Builddoctor.Bench.AgentEvent
+  end
+
+  def measurable, do: @measurable
+  def places, do: @places
+  def max_errors, do: @max_errors
+
+  calculations do
+    calculate :grade, :map, Builddoctor.Bench.Grade
   end
 
   identities do

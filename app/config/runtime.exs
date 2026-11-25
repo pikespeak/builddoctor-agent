@@ -4,7 +4,8 @@ if config_env() != :test do
   config :builddoctor,
     agent_token: System.get_env("AGENT_TOKEN"),
     requester_key: System.get_env("REQUESTER_KEY"),
-    imprint_file: System.get_env("IMPRINT_FILE")
+    imprint_file: System.get_env("IMPRINT_FILE"),
+    public_mode: System.get_env("PUBLIC_MODE", "full")
 end
 
 # config/runtime.exs is executed for all environments, including

@@ -11,7 +11,7 @@ type Ash struct{ c caller }
 
 // NewAsh uses the shared secret of the agent.
 func NewAsh(base, token string, h *http.Client) Ash {
-	return Ash{caller{base + "/api/json", token, "application/vnd.api+json", h}}
+	return Ash{caller{base: base + "/api/json", token: token, media: "application/vnd.api+json", files: base + "/api", http: h}}
 }
 
 // Audit as the application reports it.

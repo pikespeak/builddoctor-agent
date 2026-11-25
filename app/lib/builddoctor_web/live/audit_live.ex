@@ -2,18 +2,17 @@ defmodule BuilddoctorWeb.AuditLive do
   @moduledoc "One page per Audit: examine, approval, measure and verdict on one living stage."
   use BuilddoctorWeb, :live_view
 
-  alias Builddoctor.{Bench, Forest}
+  alias Builddoctor.Bench
   alias Builddoctor.Bench.{Actor, Audit}
   alias PetalComponents.Card
-  alias BuilddoctorWeb.{AuditView, Requester, Suggestion, Timeline}
+  alias BuilddoctorWeb.{AuditView, Press, Requester, Suggestion, Timeline}
 
   @impl true
   def mount(params, session, socket) do
     socket =
       assign(socket,
-        session: Map.take(session, ["requester_since"]),
+        session: Map.take(session, ["requester_since", "visitor"]),
         requester: Requester.signed_in?(session),
-        side: :after,
         pending: false,
         ticking: nil,
         proof: false,
@@ -22,14 +21,25 @@ defmodule BuilddoctorWeb.AuditLive do
         contact: contact()
       )
 
-    case find(params) do
+    case find(params, Requester.viewer(session)) do
       nil ->
-        {:ok, assign(socket, view: nil, page_title: "BuildDoctor")}
+        {:ok, assign(socket, view: nil, teaser: nil, page_title: "BuildDoctor")}
 
       audit ->
         if connected?(socket), do: BuilddoctorWeb.Endpoint.subscribe("audit:#{audit.id}")
-        {:ok, socket |> assign(page_title: audit.repository) |> show(audit)}
+
+        {:ok,
+         socket
+         |> assign(page_title: audit.repository, live: audit.state == :examining)
+         |> show(audit)
+         |> tease()}
     end
+  end
+
+  # Chosen once, so that it does not change while somebody reads.
+  defp tease(socket) do
+    viewer = Requester.viewer(socket.assigns.session)
+    assign(socket, teaser: AuditView.teaser(socket.assigns.view, viewer))
   end
 
   defp contact do
@@ -39,8 +49,8 @@ defmodule BuilddoctorWeb.AuditLive do
     end
   end
 
-  defp find(%{"id" => id}) do
-    case Bench.get_audit(id) do
+  defp find(%{"id" => id}, viewer) do
+    case Bench.get_audit(id, actor: viewer) do
       {:ok, audit} -> audit
       _ -> nil
     end
@@ -50,7 +60,11 @@ defmodule BuilddoctorWeb.AuditLive do
     requester = Requester.signed_in?(socket.assigns.session)
 
     socket
-    |> assign(view: AuditView.load(audit), requester: requester)
+    |> assign(
+      view: AuditView.load(audit, Requester.viewer(socket.assigns.session)),
+      requester: requester,
+      may_start: Requester.may_start?(socket.assigns.session)
+    )
     |> assign(notices: notices(requester, audit))
     |> draw()
     |> tick()
@@ -79,15 +93,8 @@ defmodule BuilddoctorWeb.AuditLive do
     end
   end
 
-  defp draw(socket) do
-    plan = AuditView.plan(socket.assigns.view, socket.assigns.side)
-
-    assign(socket,
-      plan: plan,
-      scene: Forest.scene(plan),
-      timelines: AuditView.timelines(socket.assigns.view)
-    )
-  end
+  defp draw(socket),
+    do: assign(socket, timelines: AuditView.timelines(socket.assigns.view))
 
   # Many small messages become one redraw.
   @impl true
@@ -107,17 +114,15 @@ defmodule BuilddoctorWeb.AuditLive do
   def handle_info(:refresh, socket) do
     socket = assign(socket, pending: false)
 
-    case Bench.get_audit(socket.assigns.view.audit.id) do
+    viewer = Requester.viewer(socket.assigns.session)
+
+    case Bench.get_audit(socket.assigns.view.audit.id, actor: viewer) do
       {:ok, audit} -> {:noreply, show(socket, audit)}
       {:error, _} -> {:noreply, assign(socket, view: nil)}
     end
   end
 
   @impl true
-  def handle_event("side", %{"side" => side}, socket) when side in ["before", "after"] do
-    {:noreply, socket |> assign(side: String.to_existing_atom(side)) |> draw()}
-  end
-
   def handle_event("proof", _, socket), do: {:noreply, update(socket, :proof, &(not &1))}
   def handle_event("approve", _, socket), do: act(socket, &Bench.approve_audit(&1, actor: &2))
 
@@ -127,7 +132,11 @@ defmodule BuilddoctorWeb.AuditLive do
   def handle_event("again", _, socket) do
     actor = Requester.actor(socket)
 
-    case Bench.examine_again(socket.assigns.view.audit.id, actor: actor) do
+    case Bench.examine_again(
+           socket.assigns.view.audit.id,
+           %{visitor: socket.assigns.session["visitor"]},
+           actor: actor
+         ) do
       {:ok, audit} -> {:noreply, push_navigate(socket, to: ~p"/a/#{audit.id}")}
       {:error, error} -> {:noreply, assign(socket, message: again(error))}
     end
@@ -158,6 +167,9 @@ defmodule BuilddoctorWeb.AuditLive do
 
       message =~ "error.limit.day" ->
         "Today's free examinations are used up. New ones start at midnight UTC."
+
+      message =~ "error.limit.visitor" ->
+        "You have started five examinations today. Please come back tomorrow."
 
       message =~ "error.limit.busy" ->
         "Several projects are being read right now. Please try again in a minute."
@@ -193,16 +205,23 @@ defmodule BuilddoctorWeb.AuditLive do
     ~H"""
     <main class="mx-auto grid max-w-6xl gap-6 px-4 py-6">
       <Layouts.brand />
-      <h1 class="font-display text-3xl font-bold break-words sm:text-5xl">
-        {@view.audit.repository}
+      <h1 class="font-display text-2xl break-words sm:text-4xl">
+        {@view.audit.repository}{if @view.audit.slot, do: ", page #{@view.audit.slot}"}
       </h1>
+      <.edition :if={foreign?(@view.audit)} view={@view} live={@live} />
       <section aria-live="polite" class="grid gap-4 text-lg">
-        <.moment view={@view} requester={@requester} side={@side} proof={@proof} asking={@asking} />
+        <.moment
+          view={@view}
+          requester={@requester}
+          proof={@proof}
+          asking={@asking}
+          may_start={@may_start}
+        />
         <p :if={@message} role="alert" class="text-madder">{@message}</p>
       </section>
       <.other view={@view} />
       <.notices :if={@notices != []} notices={@notices} />
-      <.findings view={@view} />
+      <.findings view={@view} live={@live} />
       <div
         :if={@timelines != []}
         id="jobs"
@@ -212,7 +231,6 @@ defmodule BuilddoctorWeb.AuditLive do
           <h2 class="font-display text-2xl font-bold">{title}</h2>
           <Timeline.timeline id={"timeline-#{i}"} label={title} rows={rows} />
         </section>
-        <.meadow view={@view} />
         <p class="text-base text-moss">
           The bar is work; the dashed line is waiting.
           <span :if={AuditView.more_jobs(@view.audit)}>{AuditView.more_jobs(@view.audit)}</span>
@@ -220,48 +238,15 @@ defmodule BuilddoctorWeb.AuditLive do
       </div>
       <.suggestion_for view={@view} />
       <.facts view={@view} />
-      <figure :if={AuditView.picture?(@plan)}>
-        <svg
-          viewBox="0 0 1200 630"
-          class="block h-auto w-full border-2 border-bark"
-          role="img"
-          aria-label={Forest.describe(@plan)}
-        >
-          <g id={"back-#{@plan.mood}"}>{raw(@scene.back)}</g>
-          <g
-            :for={t <- @scene.trees}
-            id={"tree-#{t.id}"}
-            class="tree"
-            data-stage={AuditView.stage(@view, t.name)}
-          >
-            {raw(t.svg)}
-          </g>
-          <g
-            :for={t <- @scene.trees}
-            id={"label-#{t.id}"}
-            class="tree-label"
-            data-stage={AuditView.stage(@view, t.name)}
-          >
-            <g class="tag">{raw(t.label)}</g>
-            <g class="badge">{raw(t.badge)}</g>
-          </g>
-          <g id="doctor" class="doctor" style={doctor_style(@scene.doctor_at)}>
-            {raw(@scene.doctor)}
-          </g>
-          <g id="front">{raw(@scene.front)}</g>
-        </svg>
-        <figcaption class="mt-2 font-display text-lg italic sm:hidden">{@plan.caption}</figcaption>
-      </figure>
-      <p :if={@plan.jobs != [] and AuditView.picture?(@plan)} id="legend" class="text-base text-moss">
-        {AuditView.legend(@view, @side)}
-      </p>
+      <.grade_for view={@view} />
+      <.next_story :if={@teaser} audit={@teaser} />
       <p :if={foreign?(@view.audit)} id="maintainer" class="max-w-prose border-l-4 border-bark pl-4">
         Is this your project? You can ask us to correct or remove this page.
         <a :if={@contact} class="inline-block py-2 underline" href={"mailto:#{@contact}"}>{@contact}</a>
         <a class="inline-block py-2 underline" href={~p"/privacy"}>What we store</a>
       </p>
       <section :if={@view.events != []}>
-        <h2 class="font-display text-2xl font-bold">What the doctor did</h2>
+        <h2 class="font-display text-2xl font-bold">How this edition was made</h2>
         <ol class="mt-3 grid gap-2">
           <li :for={e <- AuditView.events(@view)} class="flex flex-wrap gap-x-3">
             <time class="tabular-nums text-moss" datetime={e.inserted_at}>{Calendar.strftime(
@@ -304,7 +289,7 @@ defmodule BuilddoctorWeb.AuditLive do
 
   defp moment(%{view: %{audit: %{state: :examining}}} = assigns) do
     ~H"""
-    <p>The doctor is reading the workflow and its last run. This page updates automatically.</p>
+    <p>This page updates by itself.</p>
     <p :if={@view.waits} id="waits" class="border-2 border-bark bg-way p-3">
       GitHub lets us read again at <time datetime={@view.waits}>{Calendar.strftime(
         @view.waits,
@@ -327,7 +312,7 @@ defmodule BuilddoctorWeb.AuditLive do
         label="Copy the link"
         phx-click={JS.dispatch("builddoctor:copy", detail: %{text: url(~p"/a/#{@view.audit.id}")})}
       />
-      <PC.button link_type="a" to={~p"/"} variant="outline" label="Back to the forest" />
+      <PC.button link_type="a" to={~p"/"} variant="outline" label="Back to the front page" />
     </p>
     <.stop :if={@requester} asking={@asking} measuring={false} />
     """
@@ -387,18 +372,15 @@ defmodule BuilddoctorWeb.AuditLive do
 
   defp moment(%{view: %{audit: %{state: :examined}}} = assigns) do
     ~H"""
-    <h2 class="font-display text-3xl font-bold">
-      {examined_headline(@view)}
-    </h2>
     <p class="max-w-prose">
-      The doctor only read this project. The facts are computed from GitHub's data. The findings are a model's reading of them, so they are not proof. Statements that the council did not pass are not shown.
+      We only read this project. The facts are computed from GitHub's data. The findings are a model's reading of them, so they are not proof. Statements that the council did not pass are not shown.
     </p>
     <p :if={@view.findings == [] and @view.trial == nil} id="calm" class="max-w-prose">
       That is a result too: no statement passed every check.
     </p>
     <div class="flex flex-wrap gap-3">
       <PC.button
-        :if={@view.audit.slot && (@requester or AuditView.due?(@view.audit))}
+        :if={@view.audit.slot && (@requester or (@may_start and AuditView.due?(@view.audit)))}
         type="button"
         phx-click="again"
         phx-disable-with="Starting"
@@ -441,16 +423,16 @@ defmodule BuilddoctorWeb.AuditLive do
     ~H"""
     <p>Stopped: {@view.audit.stop_reason}</p>
     <p :if={foreign?(@view.audit) and @view.audit.replaces_id == nil}>
-      Its place in the forest is free again.
+      Its page is blank again. Visitors can enter this project again 24 hours after it was started.
     </p>
     <div class="flex flex-wrap gap-3">
       <PC.button
-        :if={foreign?(@view.audit) and @view.audit.replaces_id == nil}
+        :if={@requester and foreign?(@view.audit) and @view.audit.replaces_id == nil}
         link_type="a"
         to={~p"/?#{[project: @view.audit.repository]}"}
         label="Try again"
       />
-      <PC.button link_type="a" to={~p"/"} variant="outline" label="Back to the forest" />
+      <PC.button link_type="a" to={~p"/"} variant="outline" label="Back to the front page" />
     </div>
     """
   end
@@ -470,21 +452,7 @@ defmodule BuilddoctorWeb.AuditLive do
       </span>
     </p>
     <p>{@reason}</p>
-    <div class="flex flex-wrap gap-3" role="group" aria-label="Show the pipeline">
-      <PC.button
-        phx-click="side"
-        phx-value-side="before"
-        variant={if @side == :before, do: "solid", else: "outline"}
-        aria-pressed={to_string(@side == :before)}
-        label="Before"
-      />
-      <PC.button
-        phx-click="side"
-        phx-value-side="after"
-        variant={if @side == :after, do: "solid", else: "outline"}
-        aria-pressed={to_string(@side == :after)}
-        label="After"
-      />
+    <div>
       <PC.button
         phx-click="proof"
         variant="ghost"
@@ -553,25 +521,189 @@ defmodule BuilddoctorWeb.AuditLive do
     """
   end
 
-  defp examined_headline(%{findings: [first | _]}), do: first.title
-  defp examined_headline(%{trial: %{}}), do: "The doctor has a suspicion."
-  defp examined_headline(_), do: "Nothing found."
+  # The newspaper of one project. Articles appear only after the council has passed them.
+  defp edition(%{view: %{audit: %{state: state}}} = assigns)
+       when state in [:examining, :examined] do
+    working = state == :examining
+    lead = List.first(assigns.view.findings)
+    # The headline comes last; while it is written, its place stays open.
+    ready = not working or AuditView.line(assigns.view.lines, :headline) != nil
+
+    assigns =
+      assign(assigns,
+        working: working,
+        lead: lead,
+        ready: ready,
+        headline: if(ready, do: AuditView.headline(told(assigns.view))),
+        seconds: lead && AuditView.waited(lead, assigns.view.audit)
+      )
+
+    ~H"""
+    <section id="edition" class="lead grid gap-5 border-t-8 border-bark pt-3">
+      <p :if={@working} id="status" role="status" class="bg-sun p-3 font-bold">
+        {AuditView.status(@view)}
+      </p>
+      <h2 :if={@ready} class="headline" data-long={to_string(String.length(@headline) > 34)}>
+        <Press.typed id={"headline-#{:erlang.phash2(@headline)}"} text={@headline} live={@live} slow />
+      </h2>
+      <div :if={!@ready} class="lines huge" aria-hidden="true"><i style="width:78%"></i></div>
+      <div class="grid items-start gap-6 md:grid-cols-[1.6fr_1fr]">
+        <Press.photo
+          audit={@view.audit}
+          place={1}
+          picture={@view.pictures[1]}
+          lines={@view.lines}
+          working={@working}
+          live={@live}
+          auto
+        />
+        <div class="grid content-start gap-4">
+          <Press.lines :if={@lead == nil and @working} head={58} />
+          <p :if={@lead} class="text-lg">
+            <Press.typed id={"lead-#{key(@lead)}"} text={@lead.text} live={@live} />
+          </p>
+          <p :if={@lead != nil or not @working} class="font-bold">
+            {if @lead, do: "A suspicion, not proof.", else: "That is a result too."}
+          </p>
+          <p :if={@view.audit.grade} class="flex items-center gap-4">
+            <Press.grade grade={@view.audit.grade} big />
+            <a href="#grade" class="inline-block py-2 underline">Why this grade</a>
+          </p>
+          <Press.seconds :if={@seconds} wait={elem(@seconds, 0)} work={elem(@seconds, 1)} />
+        </div>
+      </div>
+      <div class="grid items-start gap-6 sm:grid-cols-2">
+        <Press.photo
+          :for={place <- 2..3}
+          :if={!in_article?(@view, place)}
+          audit={@view.audit}
+          place={place}
+          picture={@view.pictures[place]}
+          lines={@view.lines}
+          working={@working}
+          live={@live}
+        />
+      </div>
+    </section>
+    """
+  end
+
+  defp edition(assigns), do: ~H""
+
+  defp told(%{audit: audit} = view),
+    do: %{audit | findings: view.findings, trials: List.wrap(view.trial), lines: view.lines}
+
+  # A grade shows every point it takes off.
+  defp grade_for(%{view: %{audit: %{grade: nil}}} = assigns), do: ~H""
+
+  defp grade_for(assigns) do
+    ~H"""
+    <section id="grade" class="grid gap-3 border-t-8 border-bark pt-4">
+      <h2 class="font-display text-3xl uppercase">
+        Grade {@view.audit.grade.letter}: {@view.audit.grade.points} of 100 points
+      </h2>
+      <ul class="grid max-w-prose">
+        <li
+          :for={{points, words} <- @view.audit.grade.off}
+          class="flex justify-between gap-6 border-b border-bark py-2"
+        >
+          <span>{words}</span><strong class="whitespace-nowrap">−{points}</strong>
+        </li>
+      </ul>
+      <p :if={@view.audit.grade.off == []}>Nothing was taken off.</p>
+      <p class="max-w-prose">
+        Computed by code from the GitHub data of this examination; not a judgment of the project. Duration and waiting for a runner do not count.
+        <a href={~p"/how-it-works#grades"} class="inline-block py-2 underline">How we grade</a>
+      </p>
+    </section>
+    """
+  end
+
+  defp next_story(assigns) do
+    assigns =
+      assign(assigns,
+        headline: AuditView.headline(assigns.audit),
+        picture: Enum.find(assigns.audit.pictures, &(&1.place == 1 and &1.state == :done))
+      )
+
+    ~H"""
+    <aside id="teaser" aria-label="Another edition" class="bg-sun">
+      <a href={~p"/a/#{@audit.id}"} class="flex flex-wrap items-center gap-5 p-5">
+        <img
+          :if={@picture}
+          src={Press.photo_url(@picture, "jpg")}
+          alt=""
+          width="768"
+          height="512"
+          loading="lazy"
+          class="w-full border-3 border-bark sm:w-56"
+        />
+        <Press.grade :if={@audit.grade} grade={@audit.grade} big />
+        <span class="min-w-0 flex-1 basis-52">
+          <span class="font-bold">Also in print: {@audit.repository}</span>
+          <span class="font-display block text-3xl uppercase">{@headline}</span>
+        </span>
+      </a>
+    </aside>
+    """
+  end
+
+  # A picture stands in its article as soon as both are there.
+  defp in_article?(view, place) do
+    case view.pictures[place] do
+      %{finding_id: id} when id != nil -> Enum.any?(view.findings, &(&1.id == id))
+      _ -> false
+    end
+  end
+
+  # The picture of the lead stands at the top of the page.
+  defp picture_of(view, finding) do
+    Enum.find(Map.values(view.pictures), &(&1.place > 1 and &1.finding_id == finding.id))
+  end
+
+  defp key(%{id: id}), do: id
+
+  defp findings(%{view: %{audit: %{state: :examining}, findings: []}} = assigns) do
+    ~H"""
+    <section id="articles" class="grid gap-8 md:grid-cols-2" aria-hidden="true">
+      <Press.lines head={64} /><Press.lines head={47} widths={[98, 100, 91, 97, 54]} />
+    </section>
+    """
+  end
 
   defp findings(assigns) do
     ~H"""
-    <section :if={@view.findings != []} id="findings" class="grid gap-3">
-      <h2 class="font-display text-2xl font-bold">Findings</h2>
-      <ol class="grid gap-3">
-        <li :for={f <- @view.findings}>
-          <Card.card class="border-bark bg-white p-4 sm:p-6">
-            <p class="flex flex-wrap items-baseline justify-between gap-3">
-              <strong class="font-display text-xl">{f.title}</strong>
-              <span class="rounded-full bg-way px-3 py-1 text-base font-bold">
-                {if AuditView.kind(f), do: AuditView.kind(f) <> " · "}Suspicion, checked by QA and Safety
-              </span>
+    <section :if={@view.findings != []} id="findings" class="grid gap-3 border-t-8 border-bark pt-4">
+      <h2 class="font-display text-3xl uppercase">Findings</h2>
+      <ol class="grid gap-6 md:grid-cols-2">
+        <li :for={f <- @view.findings} class="min-w-0">
+          <article class={["h-full p-4 sm:p-5", if(sober?(f), do: "bg-white", else: "bg-paper")]}>
+            <h3 class={
+              if sober?(f),
+                do: "text-xl font-bold",
+                else: "font-display text-2xl uppercase sm:text-3xl"
+            }>
+              <Press.typed id={"title-#{f.id}"} text={f.title} live={@live} slow />
+            </h3>
+            <div :if={picture = picture_of(@view, f)} class="mt-3">
+              <Press.photo
+                audit={@view.audit}
+                place={picture.place}
+                picture={picture}
+                lines={@view.lines}
+                working={@view.audit.state == :examining}
+                live={@live}
+              />
+            </div>
+            <p class="mt-2 font-bold">
+              <span class="bg-way px-2 py-1">{if AuditView.kind(f), do: AuditView.kind(f) <> " · "}Suspicion, checked by QA and Safety</span>
             </p>
-            <p class="mt-2 max-w-prose">{f.text}</p>
-            <p :if={f.advice} class="mt-2 max-w-prose"><strong>Try:</strong> {f.advice}</p>
+            <p class="mt-3 max-w-prose">
+              <Press.typed id={"text-#{f.id}"} text={f.text} live={@live} />
+            </p>
+            <p :if={f.advice} class="mt-2 max-w-prose">
+              <strong>Try:</strong> <Press.typed id={"advice-#{f.id}"} text={f.advice} live={@live} />
+            </p>
             <ul
               class="mt-3 grid gap-1 border-t border-bark pt-3 text-base"
               aria-label="Facts behind it"
@@ -580,12 +712,15 @@ defmodule BuilddoctorWeb.AuditLive do
                 <.fact fact={fact} audit={@view.audit} />
               </li>
             </ul>
-          </Card.card>
+          </article>
         </li>
       </ol>
     </section>
     """
   end
+
+  # Failures and weaknesses are told without a show.
+  defp sober?(%{kind: kind}), do: kind in [:failure, :file_error, :security]
 
   defp fact(assigns) do
     ~H"""
@@ -623,30 +758,6 @@ defmodule BuilddoctorWeb.AuditLive do
     """
   end
 
-  # The saved time as a meadow, on the scale of the run before.
-  defp meadow(assigns) do
-    assigns = assign(assigns, meadow: AuditView.meadow(assigns.view))
-
-    ~H"""
-    <div :if={@meadow} id="meadow" class="grid gap-2">
-      <div class="relative h-11 rounded border-2 border-bark bg-grass" aria-hidden="true">
-        <span
-          class="absolute inset-y-0 left-0 grid place-items-center border-r-2 border-bark bg-way font-bold tabular-nums"
-          style={"width:#{@meadow.kept}%"}
-        >
-          {@meadow.words}
-        </span>
-        <span
-          :for={f <- @meadow.flowers}
-          class={["absolute size-3 rounded-full border-2 border-bark", f.color]}
-          style={"left:#{f.left}%;top:#{f.top}px"}
-        />
-      </div>
-      <p>{@meadow.legend}</p>
-    </div>
-    """
-  end
-
   defp suggestion_for(%{view: %{trial: %{original: o}, audit: %{state: s}}} = assigns)
        when is_binary(o) and s in [:examined, :done] do
     ~H"""
@@ -661,8 +772,6 @@ defmodule BuilddoctorWeb.AuditLive do
   end
 
   defp suggestion_for(assigns), do: ~H""
-
-  defp doctor_style({dx, dy}), do: "transform: translate(#{dx}px, #{dy}px)"
 
   defp change(assigns) do
     ~H"""

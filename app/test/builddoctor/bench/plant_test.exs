@@ -1,5 +1,5 @@
 defmodule Builddoctor.Bench.PlantTest do
-  use Builddoctor.DataCase, async: true
+  use Builddoctor.DataCase, async: false
 
   alias Builddoctor.Bench
   alias Builddoctor.Bench.Actor
@@ -82,7 +82,9 @@ defmodule Builddoctor.Bench.PlantTest do
     audit = Bench.report_audit_error!(audit, @agent)
     assert {audit.state, audit.slot} == {:stopped, nil}
     assert {:error, _} = Bench.report_audit_error(audit, @agent)
-    again = Bench.plant_audit!("a/b", 1)
+    assert {:error, error} = Bench.plant_audit("A/b", 2)
+    assert Exception.message(error) =~ "error.again.tooSoon"
+    again = Bench.plant_audit!("a/b", 1, actor: Actor.requester())
     assert Bench.stop_audit!(again, "It is private.", @agent).slot == nil
     assert Bench.planted_audits!() == []
   end

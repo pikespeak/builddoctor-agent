@@ -79,7 +79,7 @@ defmodule BuilddoctorWeb.HowLiveTest do
 
   test "without data it explains and claims no result", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/how-it-works")
-    assert html =~ "measure before we claim"
+    assert html =~ "Facts first, proof where we can measure"
 
     for id <- ~w(steps council probe limits parts), do: assert(has_element?(view, "##{id}"))
     for id <- ~w(numbers proof examples), do: refute(has_element?(view, "##{id}"))
@@ -99,9 +99,7 @@ defmodule BuilddoctorWeb.HowLiveTest do
     assert has_element?(view, "#numbers", "26 s")
     assert has_element?(view, "#proof a[href='/a/#{new.id}']")
     refute has_element?(view, "#proof a[href='/a/#{old.id}']")
-    assert has_element?(view, "#proof img[src='/a/#{new.id}/forest.svg'][alt]")
     assert has_element?(view, "#how-1", "vet")
-    assert conn |> get(~p"/a/#{new.id}/forest.svg") |> response(200)
   end
 
   test "only chosen projects with a published finding are examples", %{conn: conn} do

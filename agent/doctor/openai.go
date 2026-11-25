@@ -17,7 +17,7 @@ type OpenAI struct {
 
 // NewOpenAI takes the gateway base URL.
 func NewOpenAI(gateway, model string, h *http.Client) OpenAI {
-	return OpenAI{caller{gateway, "", "application/json", h}, model}
+	return OpenAI{caller{base: gateway, media: "application/json", http: h}, model}
 }
 
 // Advice is the model's answer.

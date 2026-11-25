@@ -47,7 +47,7 @@ type wood struct {
 	code     map[string]int // path suffix to status
 	header   http.Header
 	auth     string
-	now, top int // model calls at the same time
+	now, top int // projects at the same time, by their model calls
 	slow     time.Duration
 }
 
@@ -63,7 +63,8 @@ func newWood() *wood {
 func (w *wood) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	b, _ := io.ReadAll(req.Body)
 	p := req.URL.Path
-	if p == "/v1/responses" {
+	beside := strings.Contains(string(b), "describes a software project") || strings.Contains(string(b), "tongue-in-cheek")
+	if p == "/v1/responses" && !beside { // one at a time in every project
 		w.mu.Lock()
 		w.now++
 		w.top = max(w.top, w.now)
@@ -143,6 +144,8 @@ func (w *wood) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		}
 		w.rounds = append(w.rounds, string(b))
 		send(map[string]any{"status": "completed", "output": []any{map[string]any{"content": []any{map[string]any{"type": "output_text", "text": text}}}}, "usage": map[string]any{"input_tokens": w.asked, "output_tokens": 6}})
+	case p == "/v1/responses" && (strings.Contains(string(b), "describes a software project") || strings.Contains(string(b), "tongue-in-cheek")):
+		send(map[string]any{"status": "completed", "output": []any{map[string]any{"content": []any{map[string]any{"type": "output_text", "text": "{}"}}}}, "usage": map[string]any{"input_tokens": 5, "output_tokens": 6}})
 	case p == "/v1/responses":
 		w.final = string(b)
 		send(map[string]any{"status": "completed", "output": []any{map[string]any{"content": []any{map[string]any{"type": "output_text", "text": w.model}}}}, "usage": map[string]any{"input_tokens": 5, "output_tokens": 6}})
@@ -168,7 +171,7 @@ func (w *wood) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 func (w *wood) crew(t *testing.T) (*Crew, *httptest.Server) {
 	s := httptest.NewServer(w)
 	t.Cleanup(s.Close)
-	d := Doctor{NewAsh(s.URL, "secret", s.Client()), NewGitHub(s.URL, "o/r", s.Client()), NewPublic(s.URL, time.Second), NewOpenAI(s.URL, "m", s.Client()), time.Millisecond, time.Second}
+	d := Doctor{NewAsh(s.URL, "secret", s.Client()), NewGitHub(s.URL, "o/r", s.Client()), NewPublic(s.URL, time.Second), NewOpenAI(s.URL, "m", s.Client()), time.Millisecond, time.Second, nil}
 	return &Crew{Doctor: d, Rest: time.Millisecond}, s
 }
 

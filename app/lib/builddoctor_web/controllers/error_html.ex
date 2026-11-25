@@ -5,22 +5,22 @@ defmodule BuilddoctorWeb.ErrorHTML do
   def render("404.html", _),
     do:
       page(%{
-        title: "No tree grows here.",
+        title: "This page is not available.",
         text: "The address is wrong, or the project was removed."
       })
 
   def render("500.html", _),
     do:
       page(%{
-        title: "The doctor tripped.",
-        text: "This is our error. Stored results are not affected. Please try again."
+        title: "Something went wrong.",
+        text: "This is our error. Please try again."
       })
 
   def render(template, _),
     do:
       page(%{
         title: Phoenix.Controller.status_message_from_template(template),
-        text: "This request was not possible."
+        text: "We could not process this request."
       })
 
   defp page(assigns) do

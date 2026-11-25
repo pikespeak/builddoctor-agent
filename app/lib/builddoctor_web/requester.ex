@@ -9,6 +9,13 @@ defmodule BuilddoctorWeb.Requester do
 
   def signed_in?(_, _), do: false
 
+  @doc "Who looks at the page."
+  def viewer(session), do: if(signed_in?(session), do: Builddoctor.Bench.Actor.viewer())
+
+  @doc "Whether this session may start Examinations at all."
+  def may_start?(session),
+    do: Builddoctor.Bench.Checks.FullMode.on?() or signed_in?(session)
+
   @doc "The actor of an open page, asked again before every act, because a page stays open for long."
   def actor(socket) do
     if signed_in?(socket.assigns.session), do: Builddoctor.Bench.Actor.requester()

@@ -100,14 +100,20 @@ defmodule BuilddoctorWeb.SelfServiceTest do
     assert {:error, {:live_redirect, _}} = render_click(button)
   end
 
-  test "a stopped project can be tried again", %{conn: conn} do
+  test "a stopped project can be tried again after a day, by the requester at once", %{conn: conn} do
     audit = Bench.plant_audit!("a/b", 1)
     Bench.stop_audit!(audit, "No successful workflow run.", @agent)
     {:ok, view, _} = live(conn, ~p"/a/#{audit.id}")
-    assert has_element?(view, "p", "place in the forest is free")
-    assert has_element?(view, "a[href='/?project=a%2Fb']", "Try again")
+    assert has_element?(view, "p", "page is blank again")
+    refute has_element?(view, "a", "Try again")
     {:ok, home, html} = live(conn, ~p"/?project=a/b")
     assert html =~ ~s(value="a/b")
+    assert home |> form("#plant") |> render_submit() =~ "examined in the last 24 hours"
+
+    {:ok, view, _} = conn |> requester() |> live(~p"/a/#{audit.id}")
+    assert has_element?(view, "a[href='/?project=a%2Fb']", "Try again")
+    age(audit)
+    {:ok, home, _} = live(conn, ~p"/?project=a/b")
     assert {:error, {:live_redirect, _}} = home |> form("#plant") |> render_submit()
   end
 
@@ -169,24 +175,24 @@ defmodule BuilddoctorWeb.SelfServiceTest do
     assert has_element?(view, "#silent", "No news for 5 minutes")
   end
 
-  test "a planted project leads to its result, and a seed can be given back", %{conn: conn} do
+  test "a planted project leads to its result, and a page can be given back", %{conn: conn} do
     audit = Bench.plant_audit!("a/b", 1)
     {:ok, view, _} = live(conn, ~p"/")
     view |> form("#plant", %{project: "https://github.com/A/B"}) |> render_submit()
     assert has_element?(view, "#known[href='/a/#{audit.id}']", "Open its result")
-    view |> element("#place-7.seed") |> render_click()
+    view |> element("button#place-7") |> render_click()
     refute has_element?(view, "#known")
-    view |> element("button", "Choose another place") |> render_click()
-    refute has_element?(view, "label", "place 7")
-    view |> element("#place-7.seed") |> render_click()
-    view |> element("#place-7.seed") |> render_click()
-    refute has_element?(view, "label", "place 7")
+    view |> element("button", "Choose another page") |> render_click()
+    refute has_element?(view, "label", "page 7")
+    view |> element("button#place-7") |> render_click()
+    view |> element("button#place-7") |> render_click()
+    refute has_element?(view, "label", "page 7")
   end
 
   test "a wrong address and a lost connection are explained", %{conn: conn} do
     {:ok, _, html} = live(conn, ~p"/")
     assert html =~ ~s(id="offline")
-    assert conn |> get("/nothing/here") |> html_response(404) =~ "No tree grows here."
+    assert conn |> get("/nothing/here") |> html_response(404) =~ "This page is not available."
   end
 
   test "the suggestion fits added lines and names its age", %{conn: conn} do

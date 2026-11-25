@@ -10,6 +10,7 @@ defmodule Builddoctor.Application do
     children = [
       BuilddoctorWeb.Telemetry,
       Builddoctor.Repo,
+      Builddoctor.VisitorCount,
       {Oban,
        AshOban.config(
          Application.fetch_env!(:builddoctor, :ash_domains),

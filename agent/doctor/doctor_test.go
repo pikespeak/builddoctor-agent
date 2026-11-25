@@ -153,7 +153,7 @@ func (w *world) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 func start(t *testing.T, w *world) Doctor {
 	s := httptest.NewServer(w)
 	t.Cleanup(s.Close)
-	return Doctor{NewAsh(s.URL, "secret", s.Client()), NewGitHub(s.URL, "o/r", s.Client()), NewPublic(s.URL, time.Second), NewOpenAI(s.URL, "m", s.Client()), time.Millisecond, time.Second}
+	return Doctor{NewAsh(s.URL, "secret", s.Client()), NewGitHub(s.URL, "o/r", s.Client()), NewPublic(s.URL, time.Second), NewOpenAI(s.URL, "m", s.Client()), time.Millisecond, time.Second, nil}
 }
 
 const good = `{"goal":"wait","hypothesis":"They need not wait.","edits":[{"kind":"remove_needs","job":"test"}]}`

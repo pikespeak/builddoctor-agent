@@ -8,7 +8,12 @@ defmodule Builddoctor.Bench.AiCall do
     extensions: [AshJsonApi.Resource]
 
   # Micro-dollars per token, read from the OpenAI pages on 2026-11-23 and 2026-11-24.
-  @prices %{"gpt-6.2-astra" => {8, 40}, "gpt-6.2-sol" => {2, 10}}
+  # An image model: text in, image tokens out.
+  @prices %{
+    "gpt-6.2-astra" => {8, 40},
+    "gpt-6.2-sol" => {2, 10},
+    "gpt-image-2.6-flare" => {5, 30}
+  }
   @limit 27_000_000
 
   json_api do

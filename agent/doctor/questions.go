@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync/atomic"
 )
 
 // The analyst may ask before it answers. It chooses from a closed list and from names that were read;
@@ -63,7 +64,8 @@ func (d Doctor) wonder(ctx context.Context, au *Audit, f Reading, facts []Fact) 
 		workflows = append(workflows, fileName(path))
 	}
 	slices.Sort(workflows)
-	asked, looks, tokens, n := map[Question]bool{}, 0, 0, 0
+	var looks atomic.Int32
+	asked, tokens, n := map[Question]bool{}, 0, 0
 	for range maxRounds {
 		ok, err := d.Ash.BudgetLeft(ctx)
 		if err != nil {
@@ -83,13 +85,30 @@ func (d Doctor) wonder(ctx context.Context, au *Audit, f Reading, facts []Fact) 
 			return facts, ctx.Err()
 		}
 		news := false
-		for _, q := range list {
-			if asked[q] || len(facts) >= maxFacts-1 {
+		type reply struct {
+			text string
+			ok   bool
+		}
+		open, replies := []Question{}, []func() (reply, error){}
+		for _, q := range list { // the answers of a round do not depend on each other
+			if asked[q] {
 				continue
 			}
 			asked[q] = true
-			text, ok := d.Public.answer(ctx, f, q, &looks)
-			if !ok {
+			open = append(open, q)
+			replies = append(replies, async(func() (reply, error) {
+				text, ok := d.Public.answer(ctx, f, q, &looks)
+				return reply{text, ok}, nil
+			}))
+		}
+		given := []reply{}
+		for _, wait := range replies {
+			r, _ := wait()
+			given = append(given, r)
+		}
+		for i, q := range open {
+			text := given[i].text
+			if !given[i].ok || len(facts) >= maxFacts-1 {
 				continue
 			}
 			n++
@@ -125,8 +144,8 @@ func inWords(q Question) string {
 func fileName(path string) string { return path[strings.LastIndex(path, "/")+1:] }
 
 // answer computes one fact. A subject that was not read, or a missing answer of GitHub, gives none.
-func (p Public) answer(ctx context.Context, f Reading, q Question, looks *int) (string, bool) {
-	look := func() bool { *looks++; return *looks <= maxLooks }
+func (p Public) answer(ctx context.Context, f Reading, q Question, looks *atomic.Int32) (string, bool) {
+	look := func() bool { return looks.Add(1) <= maxLooks }
 	if q.Kind == "job_steps" || q.Kind == "job_history" {
 		i := slices.IndexFunc(f.All, func(j Job) bool { return j.Name == q.Subject })
 		if i < 0 {

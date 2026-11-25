@@ -21,7 +21,7 @@ type GitHub struct {
 
 // NewGitHub takes the gateway base URL.
 func NewGitHub(gateway, repo string, h *http.Client) GitHub {
-	return GitHub{caller{gateway + "/repos/" + repo, "", "application/json", h}, repo}
+	return GitHub{caller{base: gateway + "/repos/" + repo, media: "application/json", http: h}, repo}
 }
 
 type ghRun struct {

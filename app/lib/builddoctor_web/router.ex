@@ -18,11 +18,30 @@ defmodule BuilddoctorWeb.Router do
     plug :put_root_layout, html: {BuilddoctorWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers, @headers
+    plug BuilddoctorWeb.Visitor
+    plug :not_listed
   end
+
+  # Search engines shall not list results about projects of others.
+  defp not_listed(%{path_info: ["a" | _]} = conn, _),
+    do: Plug.Conn.put_resp_header(conn, "x-robots-tag", "noindex, nofollow")
+
+  defp not_listed(conn, _), do: conn
 
   pipeline :api do
     plug :accepts, ["json"]
     plug BuilddoctorWeb.AgentAuth
+  end
+
+  # Bytes have their own limit; the secret is checked before they are read.
+  pipeline :upload do
+    plug BuilddoctorWeb.AgentAuth
+  end
+
+  scope "/api", BuilddoctorWeb do
+    pipe_through [:upload]
+
+    put "/pictures/:id/:part", PictureController, :store
   end
 
   scope "/api/json" do
@@ -39,11 +58,12 @@ defmodule BuilddoctorWeb.Router do
     get "/requester", RequesterController, :new
     post "/requester", RequesterController, :create
     post "/requester/leave", RequesterController, :leave
-    get "/a/:id/change.patch", ForestController, :patch
-    get "/a/:id/forest.svg", ForestController, :show
+    get "/a/:id/change.patch", PatchController, :patch
+    get "/a/:id/photo/:file", PictureController, :show
 
     live_session :pages do
-      live "/", ForestLive, :index
+      live "/", FrontLive, :index
+      live "/archive", ArchiveLive, :index
       live "/how-it-works", HowLive, :show
       live "/a/:id", AuditLive, :show
     end

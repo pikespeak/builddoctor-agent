@@ -1,5 +1,5 @@
 defmodule Builddoctor.Bench.CouncilTest do
-  use Builddoctor.DataCase, async: true
+  use Builddoctor.DataCase, async: false
 
   alias Builddoctor.Bench
   alias Builddoctor.Bench.Actor

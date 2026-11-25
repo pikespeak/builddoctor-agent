@@ -69,13 +69,16 @@ defmodule BuilddoctorWeb.AuditLiveTest do
   test "without an audit the page says so", %{conn: conn} do
     {:ok, _, html} = live(conn, ~p"/a/nonsense")
     assert html =~ "No audit here"
-    assert conn |> get(~p"/a/#{Ash.UUID.generate()}/forest.svg") |> response(404)
+    assert conn |> get(~p"/a/#{Ash.UUID.generate()}/photo/1.jpg") |> response(404)
   end
 
   test "a visitor follows the audit live but cannot decide", %{conn: conn} do
     audit = audit()
     {:ok, view, html} = live(conn, ~p"/a/#{audit.id}")
-    assert html =~ "reading the workflow" and html =~ "Measures changes on its own test project"
+
+    assert html =~ "This page updates by itself" and
+             html =~ "measured on its own test project only"
+
     refute html =~ ~s(id="jobs")
 
     {audit, _} = with_trial(audit)
@@ -129,7 +132,6 @@ defmodule BuilddoctorWeb.AuditLiveTest do
     view |> element("button", "Stop") |> render_click()
     assert has_element?(view, "#sure", "will not count")
     assert view |> element("button", "Stop it") |> render_click() =~ "Stopped by the requester."
-    assert render(view) =~ ~s(id="back-stopped")
   end
 
   test "unlocking leads back to the audit and nowhere else", %{conn: conn} do
@@ -144,26 +146,30 @@ defmodule BuilddoctorWeb.AuditLiveTest do
     assert redirected_to(sent.("//evil.example")) == "/"
   end
 
-  test "the pennant stands at the measured wait, queue included", %{conn: conn} do
+  test "the queue before the first job counts as waiting", %{conn: conn} do
     {audit, trial} = waiting()
     audit = Bench.approve_audit!(audit, actor: Actor.requester())
 
-    Bench.record_run!(
-      %{
-        audit_id: audit.id,
-        trial_id: trial.id,
-        github_run_id: 11,
-        sha: @sha,
-        started_at: @t,
-        warmup: false,
-        jobs: [job("vet", 3, 42)]
-      },
-      @agent
-    )
+    for {side, base} <- [{nil, 11}, {trial.id, 21}], i <- 0..2 do
+      Bench.record_run!(
+        %{
+          audit_id: audit.id,
+          trial_id: side,
+          github_run_id: base + i,
+          sha: @sha,
+          started_at: @t,
+          warmup: false,
+          jobs: [job("vet", 30, 60)]
+        },
+        @agent
+      )
+    end
 
-    Bench.stop_audit!(audit, "Enough.", actor: Actor.requester())
-    {:ok, _, html} = live(conn, ~p"/a/#{audit.id}")
-    assert html =~ "vet 39 s from second 3"
+    Bench.evaluate_trial!(trial, @agent)
+    Bench.finish_audit!(audit, @agent)
+    {:ok, view, _} = live(conn, ~p"/a/#{audit.id}")
+    assert has_element?(view, "#timeline-0 [style='left:50.0%;width:50.0%']")
+    assert has_element?(view, "#timeline-0", "30 s")
   end
 
   test "one line per run, and a bill in minutes", %{conn: conn} do
@@ -189,7 +195,6 @@ defmodule BuilddoctorWeb.AuditLiveTest do
     assert html =~ "1 billed minute back, every run."
     assert html =~ "Run 1 of 8 finished." and not (html =~ "Run 1 of 8 started.")
     assert html =~ "median Bill"
-    assert html =~ "The flower stands for the time saved at the median."
   end
 
   test "a whole saving in every run and half seconds are named exactly", %{conn: conn} do
@@ -201,27 +206,6 @@ defmodule BuilddoctorWeb.AuditLiveTest do
     Bench.finish_audit!(audit, @agent)
     {:ok, _, html} = live(conn, ~p"/a/#{audit.id}")
     assert html =~ "30.5 seconds back at the median."
-    assert html =~ "30 flowers: one for each saved second at the median."
-  end
-
-  for {walls, rule} <- [
-        {[700, 701, 702], "29 flowers: one for every 10 saved seconds"},
-        {[2400, 2401, 2402], "33 flowers: one for each saved minute"}
-      ] do
-    test "large savings: #{rule}", %{conn: conn} do
-      {audit, trial} = waiting()
-      audit = Bench.approve_audit!(audit, actor: Actor.requester())
-      record(audit, nil, unquote(walls), 900)
-      record(audit, trial, [405, 405, 405], 950)
-      Bench.evaluate_trial!(trial, @agent)
-      Bench.finish_audit!(audit, @agent)
-      {:ok, view, html} = live(conn, ~p"/a/#{audit.id}")
-      assert html =~ unquote(rule)
-      assert has_element?(view, "svg[aria-label*='flowers']")
-      view |> element("button", "Before") |> render_click()
-      refute has_element?(view, "svg[aria-label*='flowers']")
-      refute has_element?(view, "#legend", "flowers")
-    end
   end
 
   test "one second, every run", %{conn: conn} do
@@ -235,11 +219,11 @@ defmodule BuilddoctorWeb.AuditLiveTest do
     assert html =~ "1 second back, every run."
   end
 
-  test "the forest grows with the running jobs", %{conn: conn} do
+  test "the timeline follows the running jobs", %{conn: conn} do
     {audit, trial} = waiting()
     audit = Bench.approve_audit!(audit, actor: Actor.requester())
     {:ok, view, _} = live(conn, ~p"/a/#{audit.id}")
-    assert has_element?(view, "#tree-0[data-stage=done]")
+    refute has_element?(view, "#timeline-0")
 
     live_jobs = [%{name: "vet", stage: :running}]
 
@@ -256,8 +240,7 @@ defmodule BuilddoctorWeb.AuditLiveTest do
     )
 
     Process.sleep(350)
-    assert has_element?(view, "#tree-0[data-stage=running]")
-    assert has_element?(view, "#tree-1[data-stage=queued]")
+    assert rows(view) == ["not started", "not started"]
     assert render(view) =~ "now without the change"
 
     Bench.report_progress!(audit, %{live_side: :trial, live_jobs: live_jobs}, @agent)
@@ -269,19 +252,20 @@ defmodule BuilddoctorWeb.AuditLiveTest do
              Bench.report_progress(audit, %{live_jobs: [%{name: "<b>", stage: :running}]}, @agent)
   end
 
-  defp labels(view) do
-    for i <- 0..1 do
-      html = view |> element("#label-#{i} .tag text") |> render()
-      html |> LazyHTML.from_fragment() |> LazyHTML.text()
-    end
+  defp rows(view) do
+    view
+    |> element("#timeline-0")
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query("li > span:last-child")
+    |> Enum.map(&LazyHTML.text/1)
   end
 
   test "while measuring, no seconds of an older run are shown", %{conn: conn} do
     {audit, _} = waiting()
     audit = Bench.approve_audit!(audit, actor: Actor.requester())
     {:ok, view, html} = live(conn, ~p"/a/#{audit.id}")
-    assert labels(view) == ["vet", "build"]
-    assert html =~ "vet not started, build not started"
+    refute html =~ "10 s" or html =~ "18 s"
 
     now = DateTime.utc_now()
 
@@ -304,18 +288,10 @@ defmodule BuilddoctorWeb.AuditLiveTest do
     )
 
     Process.sleep(350)
-    assert ["vet 7s", "build 4" <> _ = first] = labels(view)
-    assert first =~ "…"
-    html = render(view)
-    assert html =~ "vet done in 7 s, build running"
-    assert has_element?(view, "#jobs", "running, 4")
-    assert has_element?(view, "#doctor[style*='translate(560']")
+    assert ["7 s", "running, 4" <> _ = first] = rows(view)
     Process.sleep(2100)
-    assert ["vet 7s", later] = labels(view)
+    assert ["7 s", later] = rows(view)
     assert later != first
-
-    svg = conn |> get(~p"/a/#{audit.id}/forest.svg") |> response(200)
-    refute svg =~ "build 18s"
 
     Bench.report_progress!(
       audit,
@@ -334,7 +310,7 @@ defmodule BuilddoctorWeb.AuditLiveTest do
     )
 
     Process.sleep(1400)
-    assert labels(view) == ["vet 0s", "build"]
+    assert rows(view) == ["0 s", "not started"]
   end
 
   for {walls, text} <- [
@@ -353,12 +329,8 @@ defmodule BuilddoctorWeb.AuditLiveTest do
       assert html =~ unquote(text) and html =~ "72 s (70 to 74)"
       assert has_element?(view, "#timeline-0", "72 s") and has_element?(view, "#timeline-1")
       assert has_element?(view, "#suggestion") == (unquote(text) =~ "back")
-      assert has_element?(view, "#meadow") == (unquote(text) =~ "back")
       if unquote(text) =~ "back", do: assert(html =~ "Measured by BuildDoctor")
-      assert view |> element("button", "Before") |> render_click() =~ "Before the change."
       assert view |> element("button", "Show the proof") |> render_click() =~ "actions/runs/100"
-      svg = conn |> get(~p"/a/#{audit.id}/forest.svg") |> response(200)
-      assert svg =~ "<svg" and svg =~ unquote(text)
     end
   end
 
@@ -414,8 +386,11 @@ defmodule BuilddoctorWeb.AuditLiveTest do
 
       Bench.finish_examination!(audit, %{examined_jobs: [job(long, 0, 9)]}, @agent)
       {:ok, view, html} = live(conn, ~p"/a/#{audit.id}")
-      assert html =~ if(trial?, do: "has a suspicion", else: "Nothing found.")
-      assert html =~ "not proof" and html =~ "long name long na…"
+
+      assert html =~
+               if(trial?, do: "We have a suspicion.", else: "No finding passed every check.")
+
+      assert html =~ "not proof" and html =~ "long name long name"
       assert has_element?(view, "#change") == trial?
       assert html =~ "gin.yml" == trial?
       refute has_element?(view, "button", "Start the trial")
@@ -521,7 +496,8 @@ defmodule BuilddoctorWeb.AuditLiveTest do
 
     Bench.finish_examination!(audit, %{}, @agent)
     {:ok, view, _} = live(conn, ~p"/a/#{audit.id}")
-    assert has_element?(view, "h2", "Jobs wait for a runner")
+    assert has_element?(view, "h2.headline", "Jobs wait for a runner")
+    assert has_element?(view, "#findings h3", "Jobs wait for a runner")
     assert has_element?(view, "#findings li li", "The longest wait was 218 s.")
     assert has_element?(view, "#findings", "Ask for fewer at once.")
     assert has_element?(view, "#facts", "longest wait")

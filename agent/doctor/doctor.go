@@ -17,6 +17,8 @@ type Doctor struct {
 	OpenAI OpenAI
 	Poll   time.Duration
 	RunMax time.Duration
+	// Develop makes a moving picture small; nil means an edition without pictures.
+	Develop func(context.Context, []byte) ([]byte, error)
 }
 
 // refused is a reason to stop the audit instead of retrying.

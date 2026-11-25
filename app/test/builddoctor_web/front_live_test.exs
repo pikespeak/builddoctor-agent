@@ -1,4 +1,4 @@
-defmodule BuilddoctorWeb.ForestLiveTest do
+defmodule BuilddoctorWeb.FrontLiveTest do
   use BuilddoctorWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
@@ -13,18 +13,18 @@ defmodule BuilddoctorWeb.ForestLiveTest do
   defp submit(view, project),
     do: view |> form("#plant", %{project: project}) |> render_submit()
 
-  test "from a seed to a seedling", %{conn: conn} do
+  test "from a blank page to an edition", %{conn: conn} do
     {:ok, other, html} = live(conn, ~p"/")
-    assert html =~ "0 of 100 places planted."
+    assert html =~ "0 of 100 pages printed."
     {:ok, view, _} = live(conn, ~p"/")
-    assert view |> element("#place-7.seed") |> render_click() =~ "Project for place 7"
+    assert view |> element("button#place-7") |> render_click() =~ "Project for page 7"
     assert {:error, {:live_redirect, %{to: to}}} = submit(view, "https://github.com/a/b")
     assert [%{slot: 7, repository: "a/b"} = audit] = Bench.planted_audits!()
     assert to == "/a/#{audit.id}"
 
     Process.sleep(350)
 
-    assert has_element?(other, "a#place-7", "Being read") and
+    assert has_element?(other, "a#place-7[aria-label*='Being read']") and
              has_element?(other, "#project-7", "Being read")
 
     assert has_element?(other, "#count", "1 of 100")
@@ -34,7 +34,7 @@ defmodule BuilddoctorWeb.ForestLiveTest do
 
     Bench.remove_audit!(audit, actor: Actor.requester())
     Process.sleep(350)
-    assert has_element?(other, "#place-7.seed")
+    assert has_element?(other, "button#place-7")
   end
 
   test "without a choice the first free place is taken", %{conn: conn} do
@@ -49,22 +49,22 @@ defmodule BuilddoctorWeb.ForestLiveTest do
     {:ok, view, _} = live(conn, ~p"/")
     assert (html = submit(view, "what is this")) =~ "owner/name or as its GitHub address"
     assert html =~ ~s(value="what is this") and html =~ ~s(aria-invalid="true")
-    assert submit(view, "A/B") =~ "already has a place"
-    view |> element("#place-9.seed") |> render_click()
+    assert submit(view, "A/B") =~ "already has its edition"
+    view |> element("button#place-9") |> render_click()
     Bench.plant_audit!("c/d", 9)
     assert submit(view, "e/f") =~ "Somebody was faster"
-    refute render(view) =~ "Project for place 9"
+    refute render(view) =~ "Project for page 9"
     assert render_click(view, "choose", %{"slot" => "x"}) =~ "Public project"
   end
 
-  test "a full forest says so", %{conn: conn} do
+  test "a full paper says so", %{conn: conn} do
     for slot <- 1..100,
         do: Bench.plant_audit!("a/b#{slot}", slot, actor: Actor.requester())
 
     {:ok, view, html} = live(conn, ~p"/")
-    assert html =~ "The forest is full. All 100 places are planted."
+    assert html =~ "The paper is full. All 100 pages are printed."
     refute has_element?(view, "#plant")
-    assert render_submit(view, "plant", %{"project" => "x/y"}) =~ "choose a free place"
+    assert render_submit(view, "plant", %{"project" => "x/y"}) =~ "choose a blank page"
   end
 
   test "our own project stands apart with its result", %{conn: conn} do
@@ -120,7 +120,7 @@ defmodule BuilddoctorWeb.ForestLiveTest do
     Bench.evaluate_trial!(trial, @agent)
     Bench.finish_audit!(audit, @agent)
     assert words.() =~ "30 seconds back at the median. 72 s → 42 s"
-    assert conn |> live(~p"/") |> elem(1) |> has_element?("#forest > a", "pikespeak/ci-patient")
+    assert conn |> live(~p"/") |> elem(1) |> has_element?("a#extra", "30 seconds back")
   end
 
   test "our own project without a proof says so", %{conn: conn} do
@@ -147,7 +147,7 @@ defmodule BuilddoctorWeb.ForestLiveTest do
     Bench.finish_audit!(audit, @agent)
     {:ok, view, _} = live(conn, ~p"/")
     assert has_element?(view, "#own", "Not proven")
-    refute has_element?(view, "#forest > a")
+    refute has_element?(view, "#extra")
   end
 
   test "a long suspicion is shortened in the list", %{conn: conn} do

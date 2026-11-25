@@ -14,6 +14,7 @@ defmodule Builddoctor.Bench.Changes.VisitorLimit do
   @jury [~D[2026-11-30], ~D[2026-12-01]]
   @jury_per_day 40
   @at_once 3
+  @per_visitor 5
 
   def per_day(day), do: if(day in @jury, do: @jury_per_day, else: @per_day)
 
@@ -40,9 +41,18 @@ defmodule Builddoctor.Bench.Changes.VisitorLimit do
       cond do
         started >= per_day(today) -> refuse(changeset, "error.limit.day")
         running >= @at_once -> refuse(changeset, "error.limit.busy")
+        not mine?(changeset) -> refuse(changeset, "error.limit.visitor")
         true -> Ash.Changeset.force_change_attribute(changeset, :by_visitor, true)
       end
     end)
+  end
+
+  # Without a known address only the limits for all apply.
+  defp mine?(changeset) do
+    case Ash.Changeset.get_argument(changeset, :visitor) do
+      nil -> true
+      key -> not changeset.valid? or Builddoctor.VisitorCount.take(key, @per_visitor)
+    end
   end
 
   defp refuse(changeset, message),

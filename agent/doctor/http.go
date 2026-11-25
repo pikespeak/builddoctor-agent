@@ -44,15 +44,20 @@ func reset(h http.Header, now time.Time) time.Time {
 
 type caller struct {
 	base, token, media string
+	files              string // where bytes go, if not to the base
+	max                int64  // of an answer, if not maxBody
 	http               *http.Client
 }
 
 func (c caller) do(ctx context.Context, method, path string, in, out any) error {
 	var body io.Reader
 	if in != nil {
-		b, err := json.Marshal(in)
-		if err != nil {
-			return err
+		b, ok := in.([]byte)
+		if !ok {
+			var err error
+			if b, err = json.Marshal(in); err != nil {
+				return err
+			}
 		}
 		body = bytes.NewReader(b)
 	}
@@ -70,11 +75,15 @@ func (c caller) do(ctx context.Context, method, path string, in, out any) error 
 		return err
 	}
 	defer res.Body.Close()
-	b, err := io.ReadAll(io.LimitReader(res.Body, maxBody+1))
+	most := c.max
+	if most == 0 {
+		most = maxBody
+	}
+	b, err := io.ReadAll(io.LimitReader(res.Body, most+1))
 	if err != nil {
 		return err
 	}
-	if len(b) > maxBody {
+	if int64(len(b)) > most {
 		return errors.New("response too large")
 	}
 	if res.StatusCode < 200 || res.StatusCode > 299 {

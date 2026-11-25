@@ -51,7 +51,7 @@ var forbidden = regexp.MustCompile("(?i)https?://|www\\.|[`<>{}]|@[a-z0-9]|\\b(c
 	"\\b(guarantee\\w*|proven|proof|definitely|certainly)\\b|" +
 	"\\b(ignore|disregard)\\b.{0,30}\\b(instructions?|rules?|prompts?)\\b|" +
 	"\\b(exploit\\w*|inject\\w*|attack\\w*|pull_request_target|untrusted)\\b|" +
-	"(ghp_|github_pat_|sk-|AKIA)[A-Za-z0-9]")
+	"\\b(ghp_|github_pat_|AKIA)[A-Za-z0-9]|\\bsk-[A-Za-z0-9_-]{12}")
 
 // Waiting less is not testing less: "remove needs from test" and "remove the check dependency" are
 // about the order of jobs. Only these phrases are taken out; the rest of the text is judged as before.
@@ -146,6 +146,40 @@ func engineer(t Trial, facts []Fact) Review {
 	return r
 }
 
+// hear collects the votes of one role. A model sometimes leaves out a statement. It is asked once
+// more about those; then no vote is a refusal.
+func (d Doctor) hear(ctx context.Context, audit string, list []Statement, ask func([]Statement) (map[string]Vote, int, int, error)) (map[string]Vote, error) {
+	got := map[string]Vote{}
+	for range 2 {
+		rest := slices.DeleteFunc(slices.Clone(list), func(s Statement) bool { _, ok := got[s.ID]; return ok })
+		if len(rest) == 0 {
+			break
+		}
+		votes, in, out, err := ask(rest)
+		if e := d.pay(ctx, audit, councilModel, in, out); e != nil {
+			return nil, e
+		}
+		if err != nil {
+			return nil, noModel{err}
+		}
+		for _, s := range rest { // only what was asked; a first vote is never replaced
+			if v, ok := votes[s.ID]; ok {
+				got[s.ID] = v
+			}
+		}
+	}
+	return got, nil
+}
+
+// worse returns the error that must not be lost: a call without an account stops the audit.
+func worse(a, b error) error {
+	var r refused
+	if a == nil || errors.As(b, &r) {
+		return b
+	}
+	return a
+}
+
 // council lets every role vote on what is pending and asks the chair.
 func (d Doctor) council(ctx context.Context, au *Audit, facts []Fact, workflow string) error {
 	list, err := d.statements(ctx, au, facts)
@@ -155,38 +189,24 @@ func (d Doctor) council(ctx context.Context, au *Audit, facts []Fact, workflow s
 	if ok, err := d.Ash.BudgetLeft(ctx); err != nil || !ok {
 		return err // nothing is published without votes
 	}
-	for role, ask := range map[string]func([]Statement) (map[string]Vote, int, int, error){
-		"qa":     func(l []Statement) (map[string]Vote, int, int, error) { return d.OpenAI.QA(ctx, l, facts, workflow) },
-		"safety": func(l []Statement) (map[string]Vote, int, int, error) { return d.OpenAI.Safety(ctx, l) },
-	} {
-		got := map[string]Vote{}
-		// A model sometimes leaves out a statement. It is asked once more about those; then no vote is a refusal.
-		for range 2 {
-			rest := slices.DeleteFunc(slices.Clone(list), func(s Statement) bool { _, ok := got[s.ID]; return ok })
-			if len(rest) == 0 {
-				break
-			}
-			votes, in, out, err := ask(rest)
-			if in > 0 {
-				if e := d.Ash.Spent(ctx, au.ID, councilModel, in, out); e != nil {
-					return refused{errors.New("A model call could not be accounted for.")}
-				}
-			}
-			if err != nil {
-				return noModel{err}
-			}
-			for _, s := range rest { // only what was asked; a first vote is never replaced
-				if v, ok := votes[s.ID]; ok {
-					got[s.ID] = v
-				}
-			}
-		}
+	qa := async(func() (map[string]Vote, error) {
+		return d.hear(ctx, au.ID, list, func(l []Statement) (map[string]Vote, int, int, error) { return d.OpenAI.QA(ctx, l, facts, workflow) })
+	})
+	safety, unsafe := d.hear(ctx, au.ID, list, func(l []Statement) (map[string]Vote, int, int, error) { return d.OpenAI.Safety(ctx, l) })
+	checked, unchecked := qa()
+	if err := worse(unchecked, unsafe); err != nil {
+		return err
+	}
+	for _, role := range []struct {
+		name string
+		got  map[string]Vote
+	}{{"qa", checked}, {"safety", safety}} {
 		for _, s := range list {
-			v, ok := got[s.ID]
+			v, ok := role.got[s.ID]
 			if !ok {
 				v = Vote{s.ID, false, "no vote"}
 			}
-			r := Review{Role: role, Verdict: "fail", Reason: cut(v.Reason, 300), Model: councilModel, Version: councilVersion}
+			r := Review{Role: role.name, Verdict: "fail", Reason: cut(v.Reason, 300), Model: councilModel, Version: councilVersion}
 			if v.Pass {
 				r.Verdict = "pass"
 			}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -108,7 +109,9 @@ func TestAnswers(t *testing.T) {
 		".github/workflows/odd.yml": {{Conclusion: "cancelled"}},
 	}}
 	ask := func(kind, subject string, looks int) (string, bool) {
-		return p.answer(ctx, f, Question{kind, subject}, &looks)
+		var n atomic.Int32
+		n.Store(int32(looks))
+		return p.answer(ctx, f, Question{kind, subject}, &n)
 	}
 	for kind, want := range map[string]string{
 		"workflow_failure": `Workflow ci.yml: in its newest failed run, step "Unit" of job "scan b" failed.`,

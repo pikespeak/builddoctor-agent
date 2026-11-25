@@ -2,7 +2,18 @@ defmodule Builddoctor.Bench do
   @moduledoc "Audits, measured workflow runs, trials and agent events."
   use Ash.Domain, otp_app: :builddoctor, extensions: [AshJsonApi.Domain]
 
-  alias Builddoctor.Bench.{AgentEvent, AiCall, Audit, Finding, Notice, Review, Run, Trial}
+  alias Builddoctor.Bench.{
+    AgentEvent,
+    AiCall,
+    Audit,
+    Finding,
+    Line,
+    Notice,
+    Picture,
+    Review,
+    Run,
+    Trial
+  }
 
   json_api do
     prefix "/api/json"
@@ -10,6 +21,7 @@ defmodule Builddoctor.Bench do
     routes do
       base_route "/audits", Audit do
         index :open, route: "/open"
+        get :read, route: "/one/:id"
         patch :request_approval, route: "/:id/request_approval"
         patch :report_progress, route: "/:id/report_progress"
         patch :identify, route: "/:id/identify"
@@ -50,6 +62,18 @@ defmodule Builddoctor.Bench do
         post :notify
       end
 
+      base_route "/lines", Line do
+        index :for_audit, route: "/for_audit/:audit_id"
+        post :record
+        patch :decide, route: "/:id/decide"
+      end
+
+      base_route "/pictures", Picture do
+        post :order
+        route :post, "/choose_figure", :choose_figure
+        patch :give_up, route: "/:id/give_up"
+      end
+
       base_route "/events", AgentEvent do
         post :log
       end
@@ -73,6 +97,7 @@ defmodule Builddoctor.Bench do
       define :waiting_audits, action: :waiting
       define :plant_audit, action: :plant, args: [:project, :slot]
       define :planted_audits, action: :planted
+      define :archived_audits, action: :archive
       define :identify_audit, action: :identify
       define :record_facts, action: :record_facts
       define :finish_examination, action: :finish_examination
@@ -120,6 +145,23 @@ defmodule Builddoctor.Bench do
     resource Notice do
       define :notify
       define :list_notices, action: :for_audit, args: [:audit_id]
+    end
+
+    resource Line do
+      define :record_line, action: :record
+      define :decide_line, action: :decide
+      define :list_lines, action: :for_audit, args: [:audit_id]
+    end
+
+    resource Picture do
+      define :order_picture, action: :order
+      define :choose_figure, action: :choose_figure, args: [:audit_id, :figures]
+      define :get_picture, action: :read, get_by: [:id]
+      define :add_picture_still, action: :add_still, args: [:bytes]
+      define :add_picture_animation, action: :add_animation, args: [:bytes]
+      define :give_up_picture, action: :give_up
+      define :list_pictures, action: :for_audit, args: [:audit_id]
+      define :done_picture, action: :done, args: [:audit_id, :place], not_found_error?: false
     end
 
     resource AgentEvent do

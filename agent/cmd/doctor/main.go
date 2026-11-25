@@ -30,6 +30,9 @@ func main() {
 		Poll:   5 * time.Second,
 		RunMax: 20 * time.Minute,
 	}
+	if os.Getenv("PICTURES") != "off" {
+		d.Develop = doctor.WebP
+	}
 	if file := os.Getenv("GITHUB_READ_TOKEN_FILE"); file != "" {
 		public, err := d.Public.WithToken(file)
 		if err != nil {
@@ -39,6 +42,21 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	// Prints an edition that was examined before there was an editor: doctor <audit> <owner/name>
+	if len(os.Args) == 3 {
+		f, err := d.Public.Read(ctx, os.Args[2])
+		if err != nil {
+			log.Fatal(err)
+		}
+		au, err := d.Ash.One(ctx, os.Args[1])
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := d.Print(ctx, au.ID, au.Facts, f.About); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if os.Getenv("ONCE") == "" {
 		(&doctor.Crew{Doctor: d, Rest: time.Minute}).Run(ctx)
 		return

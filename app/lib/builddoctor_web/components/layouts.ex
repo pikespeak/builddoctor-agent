@@ -7,15 +7,26 @@ defmodule BuilddoctorWeb.Layouts do
   @doc "The name and what it does, on every page."
   def brand(assigns) do
     ~H"""
-    <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-      <a href={~p"/"} class="inline-flex min-h-11 items-center font-display text-2xl font-bold">
-        BuildDoctor
-      </a>
-      <a href={~p"/how-it-works"} class="inline-flex min-h-11 items-center text-base underline">
-        How it works
-      </a>
-      <p class="w-full text-base">
-        Examines public GitHub Actions pipelines and suggests improvements. Measures changes on its own test project and shows the results.
+    <header class="grid gap-4">
+      <div class="flex flex-wrap items-center gap-x-8 gap-y-3">
+        <a
+          href={~p"/"}
+          class="masthead"
+          aria-label="Build! The Daily Flake, the newspaper of BuildDoctor"
+        >
+          <span>Build<i>!</i></span><small>The Daily Flake</small>
+        </a>
+        <nav aria-label="Pages" class="flex flex-wrap gap-x-6 font-bold">
+          <a href={~p"/"} class="inline-flex min-h-11 items-center underline">Front page</a>
+          <a href={~p"/archive"} class="inline-flex min-h-11 items-center underline">Archive</a>
+          <a href={~p"/how-it-works"} class="inline-flex min-h-11 items-center underline">
+            How it works
+          </a>
+        </nav>
+      </div>
+      <p class="border-y-2 border-bark py-2 text-base">
+        <strong>Printed by BuildDoctor.</strong>
+        It examines public GitHub Actions pipelines and suggests improvements. Changes are measured on its own test project only.
       </p>
     </header>
     <p
@@ -69,7 +80,7 @@ defmodule BuilddoctorWeb.Layouts do
       <.brand />
       <h1 class="font-display text-4xl font-bold">{@title}</h1>
       <p class="text-lg">{@text}</p>
-      <p><PC.button link_type="a" to={~p"/"} label="Back to the forest" /></p>
+      <p><PC.button link_type="a" to={~p"/"} label="Back to the front page" /></p>
       <.legal />
     </main>
     """
