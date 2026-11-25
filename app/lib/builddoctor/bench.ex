@@ -98,6 +98,7 @@ defmodule Builddoctor.Bench do
       define :plant_audit, action: :plant, args: [:project, :slot]
       define :planted_audits, action: :planted
       define :archived_audits, action: :archive
+      define :audits_of_project, action: :of_project, args: [:repository]
       define :identify_audit, action: :identify
       define :record_facts, action: :record_facts
       define :finish_examination, action: :finish_examination

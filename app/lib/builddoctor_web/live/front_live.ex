@@ -301,6 +301,11 @@ defmodule BuilddoctorWeb.FrontLive do
           Our agent writes the ads and the horoscope, and a council checks them. They are jokes and mean no particular project.
         </p>
       </div>
+      <p id="own-ad" class="border-3 border-dashed border-bark bg-sun p-4 text-lg">
+        <strong>Advertisement.</strong>
+        Your private pipelines have stories, too.
+        <a href={~p"/subscribe"} class="inline-block py-2 font-bold underline">Join the free waiting list for private editions</a>
+      </p>
       <section :if={@may_start} id="pages" class="grid gap-3 border-t-8 border-bark pt-5">
         <h2 class="font-display text-3xl uppercase sm:text-4xl">Choose your page</h2>
         <p>A black page is printed and can be read. A blank one can be yours.</p>

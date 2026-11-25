@@ -42,6 +42,11 @@ defmodule BuilddoctorWeb.AuditLive do
     assign(socket, teaser: AuditView.teaser(socket.assigns.view, viewer))
   end
 
+  defp feed(%{repository: repository}) do
+    [owner, name] = String.split(repository, "/")
+    ~p"/feed/#{owner}/#{name}"
+  end
+
   defp contact do
     case BuilddoctorWeb.Imprint.load() do
       %{email: email} -> email
@@ -244,6 +249,15 @@ defmodule BuilddoctorWeb.AuditLive do
         Is this your project? You can ask us to correct or remove this page.
         <a :if={@contact} class="inline-block py-2 underline" href={"mailto:#{@contact}"}>{@contact}</a>
         <a class="inline-block py-2 underline" href={~p"/privacy"}>What we store</a>
+      </p>
+      <p
+        :if={foreign?(@view.audit) and @view.audit.state == :examined}
+        id="follow"
+        class="max-w-prose border-l-4 border-bark pl-4"
+      >
+        <a class="inline-block py-2 font-bold underline" href={feed(@view.audit)}>Follow this project in a feed reader</a>
+        New editions appear there when somebody prints one again. Private repositories:
+        <a class="inline-block py-2 underline" href={~p"/subscribe"}>join the waiting list</a>
       </p>
       <section :if={@view.events != []}>
         <h2 class="font-display text-2xl font-bold">How this edition was made</h2>
@@ -569,6 +583,9 @@ defmodule BuilddoctorWeb.AuditLive do
             <Press.grade grade={@view.audit.grade} big />
             <a href="#grade" class="inline-block py-2 underline">Why this grade</a>
           </p>
+          <p :if={patch?(@view)} id="has-patch">
+            <PC.button link_type="a" to="#suggestion" label="There is a patch" />
+          </p>
           <Press.seconds :if={@seconds} wait={elem(@seconds, 0)} work={elem(@seconds, 1)} />
         </div>
       </div>
@@ -772,6 +789,9 @@ defmodule BuilddoctorWeb.AuditLive do
   end
 
   defp suggestion_for(assigns), do: ~H""
+
+  defp patch?(%{trial: %{original: o}, audit: %{state: :examined}}) when is_binary(o), do: true
+  defp patch?(_), do: false
 
   defp change(assigns) do
     ~H"""

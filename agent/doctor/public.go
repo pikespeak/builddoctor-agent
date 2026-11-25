@@ -278,11 +278,25 @@ func (d Doctor) foreign(ctx context.Context, au *Audit) (failed error) {
 		if err := d.findings(ctx, au, advice); err != nil {
 			return err
 		}
-		if patched, err := Apply(f.Workflow, limits(f.Workflow, advice.Edits, f.All)); err != nil {
+		goal, why := advice.Goal, advice.Hypothesis
+		patched, err := Apply(f.Workflow, limits(f.Workflow, advice.Edits, f.All))
+		found := err == nil
+		if !found { // nothing from the analyst; code may still repair what the grade takes points off for
+			goal = "bill"
+			var limit Fact
+			patched, why, limit, found = repair(f.Workflow, f.All)
+			if limit.ID != "" { // the votes need it
+				facts = append(facts, limit)
+				if err := d.Ash.RecordFacts(ctx, au.ID, facts, f.Jobs); err != nil {
+					return err
+				}
+			}
+		}
+		if !found {
 			if err := d.Ash.Log(ctx, au.ID, "openai", "No change from the safe list would help here.", ""); err != nil {
 				return err
 			}
-		} else if err := d.Ash.Propose(ctx, Trial{AuditID: au.ID, Attempt: 1, Goal: advice.Goal, Hypothesis: cut(advice.Hypothesis, 1000), Original: f.Workflow, Patch: patched, Branch: branch(au, "trial")}); err != nil {
+		} else if err := d.Ash.Propose(ctx, Trial{AuditID: au.ID, Attempt: 1, Goal: goal, Hypothesis: cut(why, 1000), Original: f.Workflow, Patch: patched, Branch: branch(au, "trial")}); err != nil {
 			return err
 		}
 	}

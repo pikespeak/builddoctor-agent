@@ -4,7 +4,8 @@ config :builddoctor, Oban, testing: :manual
 
 config :builddoctor,
   agent_token: "test-agent-token-0123456789abcdef",
-  requester_key: "test-requester-key-0123456789abcdef"
+  requester_key: "test-requester-key-0123456789abcdef",
+  edge_secret: "test-edge-secret-0123456789abcdefgh"
 
 config :ash,
   policies: [show_policy_breakdowns?: true],

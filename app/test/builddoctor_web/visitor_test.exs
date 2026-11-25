@@ -77,6 +77,48 @@ defmodule BuilddoctorWeb.VisitorTest do
     assert {:error, {:live_redirect, _}} = start(from(conn, "198.51.100.250"), "a/b7")
   end
 
+  test "only our own door may report another address", %{conn: conn} do
+    visitor = fn headers ->
+      Enum.reduce(headers, from(conn, "203.0.113.7"), fn {k, v}, c ->
+        %{c | req_headers: c.req_headers ++ [{k, v}]}
+      end)
+      |> get(~p"/how-it-works")
+      |> Plug.Conn.get_session("visitor")
+    end
+
+    secret = {"x-builddoctor-edge", "test-edge-secret-0123456789abcdefgh"}
+    client = {"x-builddoctor-client", "198.51.100.9"}
+    door = visitor.([])
+    real = visitor.([secret, client])
+
+    assert real == Visitor.hash(["198.51.100.9"], conn_secret())
+    assert real != door
+    assert visitor.([secret, {"x-builddoctor-client", "198.51.100.8"}]) != real
+
+    for forged <- [
+          [client],
+          [{"x-builddoctor-edge", "wrong"}, client],
+          [{"x-builddoctor-edge", ""}, client],
+          [secret, secret, client],
+          [secret],
+          [secret, client, client]
+        ],
+        do: assert(visitor.(forged) == door)
+
+    # An address that is none gives no key instead of somebody else's.
+    assert visitor.([secret, {"x-builddoctor-client", "x"}]) == nil
+
+    for weak <- [nil, "", "short"] do
+      before = Application.get_env(:builddoctor, :edge_secret)
+      Application.put_env(:builddoctor, :edge_secret, weak)
+      on_exit(fn -> Application.put_env(:builddoctor, :edge_secret, before) end)
+      assert visitor.([{"x-builddoctor-edge", weak || ""}, client]) == door
+      Application.put_env(:builddoctor, :edge_secret, before)
+    end
+  end
+
+  defp conn_secret, do: BuilddoctorWeb.Endpoint.config(:secret_key_base)
+
   test "results about projects are not listed by search engines", %{conn: conn} do
     assert ["noindex, nofollow"] = conn |> get(~p"/a/nonsense") |> get_resp_header("x-robots-tag")
     assert [] = conn |> get(~p"/how-it-works") |> get_resp_header("x-robots-tag")

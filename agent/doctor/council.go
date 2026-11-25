@@ -15,7 +15,7 @@ import (
 
 const (
 	councilModel   = "gpt-6.2-sol" // another model than the analyst's
-	councilVersion = 5             // raise it with every change of the words or rules below
+	councilVersion = 6             // raise it with every change of the words or rules below
 )
 
 // Statement is one thing the analyst says.
@@ -270,42 +270,68 @@ func (d Doctor) statements(ctx context.Context, au *Audit, facts []Fact) ([]Stat
 	}
 	for _, t := range trials {
 		if t.Status == "pending" && t.Verdict == "" {
-			list = append(list, Statement{t.ID, "Proposed change", t.Hypothesis, "", removed(withoutEmails(t.Original), withoutEmails(t.Patch)), planOf(facts), "trial"})
+			list = append(list, Statement{t.ID, "Proposed change", t.Hypothesis, "", changed(withoutEmails(t.Original), withoutEmails(t.Patch)), planOf(facts), "trial"})
 		}
 	}
 	return list, nil
 }
 
+// planOf are the facts that were computed for a change.
 func planOf(facts []Fact) []Fact {
+	var out []Fact
 	for _, f := range facts {
-		if f.ID == "plan" {
-			return []Fact{f}
+		if f.ID == "plan" || f.ID == "limits" {
+			out = append(out, f)
 		}
 	}
-	return nil
+	return out
 }
 
-// removed lists the lines that the change takes away and adds.
-func removed(original, patched string) string {
-	left := map[string]int{}
-	for _, l := range strings.Split(patched, "\n") {
-		left[l]++
+// changed shows the change with two lines around it, so that a vote sees where a line belongs.
+func changed(original, patched string) string {
+	a, b := strings.Split(original, "\n"), strings.Split(patched, "\n")
+	same := make([][]int, len(a)+1) // longest common rest of a from i and b from j
+	for i := range same {
+		same[i] = make([]int, len(b)+1)
 	}
-	out := []string{}
-	for _, l := range strings.Split(original, "\n") {
-		if left[l] == 0 {
-			out = append(out, "- "+l)
-		} else {
-			left[l]--
+	for i := len(a) - 1; i >= 0; i-- {
+		for j := len(b) - 1; j >= 0; j-- {
+			if a[i] == b[j] {
+				same[i][j] = same[i+1][j+1] + 1
+			} else {
+				same[i][j] = max(same[i+1][j], same[i][j+1])
+			}
 		}
 	}
-	for _, l := range strings.Split(patched, "\n") {
-		if left[l] > 0 {
-			out = append(out, "+ "+l)
-			left[l]--
+	lines, i, j := []string{}, 0, 0
+	for i < len(a) || j < len(b) {
+		switch {
+		case i < len(a) && j < len(b) && a[i] == b[j]:
+			lines = append(lines, "  "+a[i])
+			i, j = i+1, j+1
+		case j < len(b) && (i == len(a) || same[i][j+1] >= same[i+1][j]):
+			lines = append(lines, "+ "+b[j])
+			j++
+		default:
+			lines = append(lines, "- "+a[i])
+			i++
 		}
 	}
-	return cut(strings.Join(out, "\n"), 2000)
+	out, shown := []string{}, -1
+	for k := range lines {
+		near := false
+		for n := max(0, k-2); n <= min(len(lines)-1, k+2); n++ {
+			near = near || !strings.HasPrefix(lines[n], "  ")
+		}
+		if !near {
+			continue
+		}
+		if k > shown+1 {
+			out = append(out, "  ...")
+		}
+		out, shown = append(out, lines[k]), k
+	}
+	return cut(strings.Join(out, "\n"), 3000)
 }
 
 // approval is the council's part before a trial starts.

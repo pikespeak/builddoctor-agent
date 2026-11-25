@@ -1,14 +1,15 @@
 defmodule BuilddoctorWeb.Visitor do
   @moduledoc """
   Gives a Visitor a keyed hash of the address that the proxy of the Sprite reports, for one day.
-  Other address headers can be forged and are not read.
+  Our own door (ops/edge.conf) reports the address together with a secret. Other address headers
+  can be forged and are not read.
   """
   import Plug.Conn
 
   def init(opts), do: opts
 
   def call(conn, _) do
-    case hash(get_req_header(conn, "sprite-client-ip"), conn.secret_key_base) do
+    case hash(address(conn), conn.secret_key_base) do
       nil ->
         conn
 
@@ -16,6 +17,19 @@ defmodule BuilddoctorWeb.Visitor do
         if get_session(conn, "visitor") == hash,
           do: conn,
           else: put_session(conn, "visitor", hash)
+    end
+  end
+
+  # Without the right secret, the address of the door is only an address like any other.
+  defp address(conn) do
+    with secret when is_binary(secret) and byte_size(secret) >= 32 <-
+           Application.get_env(:builddoctor, :edge_secret),
+         [given] <- get_req_header(conn, "x-builddoctor-edge"),
+         true <- Plug.Crypto.secure_compare(given, secret),
+         [_] = client <- get_req_header(conn, "x-builddoctor-client") do
+      client
+    else
+      _ -> get_req_header(conn, "sprite-client-ip")
     end
   end
 

@@ -7,14 +7,14 @@ export PGPASSWORD=postgres; s=$(psql -h 127.0.0.1 -U postgres builddoctor_dev -A
 /home/sprite/backup.sh once
 umask 077; [ -f /home/sprite/secret_key_base ] || head -c 64 /dev/urandom | base64 -w0 > /home/sprite/secret_key_base
 cd /home/sprite/app; rm -rf lib test config priv/repo; tar xzf /home/sprite/app.tgz; umask 022
-export MIX_ENV=prod DATABASE_URL="$(cat /home/sprite/db.url)" SECRET_KEY_BASE=$(cat /home/sprite/secret_key_base) PHX_HOST=builddoctor-b6tq7.sprites.app AGENT_TOKEN="$(cat /home/sprite/agent.secret)" REQUESTER_KEY="$(cat /home/sprite/requester.key)"
+export MIX_ENV=prod DATABASE_URL="$(cat /home/sprite/db.url)" SECRET_KEY_BASE=$(cat /home/sprite/secret_key_base) PHX_HOST=builddoctor.app AGENT_TOKEN="$(cat /home/sprite/agent.secret)" REQUESTER_KEY="$(cat /home/sprite/requester.key)"
 mix deps.get --only prod >/dev/null 2>&1; mix deps.compile >/home/sprite/deps.log 2>&1; mix compile 2>&1 | tail -2; mix assets.deploy 2>&1 | tail -2
 mix ecto.migrate 2>&1 | grep -E "Migrated|already|rror" || true
 cat > /home/sprite/serve-prod.sh <<'Y'
 #!/bin/bash
 cd /home/sprite/app
-export MIX_ENV=prod DATABASE_URL="$(cat /home/sprite/db.url)" PHX_HOST=builddoctor-b6tq7.sprites.app PHX_SERVER=true IMPRINT_FILE=/home/sprite/imprint.json PUBLIC_MODE="$(cat /home/sprite/public_mode 2>/dev/null || echo full)"
-export SECRET_KEY_BASE="$(cat /home/sprite/secret_key_base)" REQUESTER_KEY="$(cat /home/sprite/requester.key)" AGENT_TOKEN="$(cat /home/sprite/agent.secret)"
+export MIX_ENV=prod DATABASE_URL="$(cat /home/sprite/db.url)" PHX_HOST=builddoctor.app PHX_SERVER=true IMPRINT_FILE=/home/sprite/imprint.json PUBLIC_MODE="$(cat /home/sprite/public_mode 2>/dev/null || echo full)"
+export SECRET_KEY_BASE="$(cat /home/sprite/secret_key_base)" REQUESTER_KEY="$(cat /home/sprite/requester.key)" AGENT_TOKEN="$(cat /home/sprite/agent.secret)" EDGE_SECRET="$(cat /home/sprite/edge.secret 2>/dev/null)" OTHER_HOSTS="$(cat /home/sprite/other_hosts 2>/dev/null)"
 exec mix phx.server --no-compile
 Y
 chmod 700 /home/sprite/serve-prod.sh

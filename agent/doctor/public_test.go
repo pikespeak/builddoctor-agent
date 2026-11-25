@@ -231,11 +231,24 @@ func TestOneBrokenProjectBlocksNobody(t *testing.T) {
 func TestNothingFound(t *testing.T) {
 	w := newWood()
 	w.model = `{"goal":"wait","hypothesis":"Fine as it is.","edits":[]}`
+	w.file = strings.ReplaceAll(wf, "    runs-on", "    timeout-minutes: 5\n    runs-on")
 	w.open["a"] = "some/project"
 	c, _ := w.crew(t)
 	w.until(t, c, func() bool { return len(w.done) == 1 })
 	if w.done["a"] != "examined" || len(w.trials) != 0 || !strings.Contains(strings.Join(w.logs, " "), "No change") {
 		t.Fatal(w.done, w.trials, w.logs)
+	}
+}
+
+func TestCodeRepairsWhatTheAnalystLeaves(t *testing.T) {
+	w := newWood()
+	w.model = `{"goal":"wait","hypothesis":"Fine as it is.","edits":[]}`
+	w.open["a"] = "some/project"
+	c, _ := w.crew(t)
+	w.until(t, c, func() bool { return len(w.done) == 1 })
+	got := w.trials["a"]
+	if w.done["a"] != "examined" || got["goal"] != "bill" || !strings.Contains(fmt.Sprint(got["patch"]), "timeout-minutes: 10") || !strings.Contains(fmt.Sprint(got["hypothesis"]), "does not make any step faster") || strings.Contains(strings.Join(w.logs, " "), "No change") {
+		t.Fatal(w.done, got, w.logs)
 	}
 }
 

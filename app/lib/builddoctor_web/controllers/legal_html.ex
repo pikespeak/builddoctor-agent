@@ -22,14 +22,14 @@ defmodule BuilddoctorWeb.LegalHTML do
       <Layouts.brand />
       <h1 class="font-display text-4xl font-bold">Privacy</h1>
       <p>
-        As of November 24, 2026. No visitor account is required. There is no advertising and no analytics.
+        As of November 24, 2026. No visitor account is required. There is no advertising by others and no analytics.
       </p>
       <.part title="Who is responsible">
         <.contact who={@who} />
       </.part>
       <.part title="When you open the page">
         <p>
-          The site runs on a Fly.io Sprite. Your IP address and request are processed to serve the site. Our examination records do not identify the visitor. Our application log keeps the time, the address of the page inside this site, what you enter into the form and technical details; handling a request also involves connection data at our hosting provider. What Fly.io records is described in <a
+          The site runs on a Fly.io Sprite; a small Fly.io machine may pass your request on to it, together with your IP address. Your IP address and request are processed to serve the site. Our examination records do not identify the visitor. Our application log keeps the time, the address of the page inside this site, what you enter into the form and technical details; handling a request also involves connection data at our hosting provider. What Fly.io records is described in <a
             class="underline"
             href="https://fly.io/legal/privacy-policy/"
             rel="noopener"
@@ -55,6 +55,11 @@ defmodule BuilddoctorWeb.LegalHTML do
           >OpenAI's privacy policy</a>.
         </p>
       </.part>
+      <.part title="When you write to us">
+        <p>
+          We use your message and email address to answer you. If you ask for a place on the waiting list for private editions, we keep your address in our mailbox and use it only to write to you about them, until you ask us to remove it or we give up the plan. The legal basis is your consent (Art. 6(1)(a) GDPR); you can withdraw it at any time by email. Withdrawing it does not affect the processing before. Cloudflare receives and forwards the mail and answers DNS queries for the domain. A feed reader that follows a project sends us requests like any other visit; we keep no list of followers.
+        </p>
+      </.part>
       <.part title="Storage and backups">
         <p>
           Examinations of other projects are deleted after 90 days, and database backups on the Sprite and in the storage service Tigris after 30 days; the three newest backups in each storage location are always kept. Application logs remain on the Sprite and are trimmed manually. The Sprite sleeps when nobody uses it, so a deletion can happen later, when it wakes up. Our own measured trials stay as long as the project runs. If you ask for a removal, we also remove the project from the backups by hand.
@@ -62,7 +67,7 @@ defmodule BuilddoctorWeb.LegalHTML do
       </.part>
       <.part title="Other countries">
         <p>
-          Fly.io, OpenAI, GitHub and Tigris are based in the United States or may process data there.
+          Fly.io, OpenAI, GitHub, Tigris and Cloudflare are based in the United States or may process data there.
         </p>
       </.part>
       <.part title="Your right to object">

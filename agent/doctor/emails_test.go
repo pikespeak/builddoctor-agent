@@ -10,7 +10,7 @@ func TestModelsGetNoEmailAddresses(t *testing.T) {
 	if strings.Contains(got, "jane") || strings.Contains(got, "x@y") || strings.Contains(got, "me@z") || strings.Count(got, "[email]") != 3 || !strings.Contains(got, "action@release.branch") {
 		t.Fatal(got)
 	}
-	if got := removed(withoutEmails("  - uses: a/b@old.branch\n# c@d.org"), withoutEmails("  - uses: a/b@new.branch")); !strings.Contains(got, "-   - uses: a/b@old.branch") || strings.Contains(got, "c@d") {
+	if got := changed(withoutEmails("  - uses: a/b@old.branch\n# c@d.org"), withoutEmails("  - uses: a/b@new.branch")); !strings.Contains(got, "-   - uses: a/b@old.branch") || strings.Contains(got, "c@d") {
 		t.Fatal(got)
 	}
 	w := curious()

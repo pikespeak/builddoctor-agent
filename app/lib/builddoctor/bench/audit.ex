@@ -110,6 +110,25 @@ defmodule Builddoctor.Bench.Audit do
               )
     end
 
+    read :of_project do
+      description "The newest stored results of one project, for its feed."
+
+      argument :repository, :string,
+        allow_nil?: false,
+        constraints: [match: ~r/\A[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]{1,100}\z/]
+
+      filter expr(
+               string_downcase(repository) == string_downcase(^arg(:repository)) and
+                 state in [:examined, :done]
+             )
+
+      prepare build(
+                sort: [inserted_at: :desc, id: :asc],
+                limit: 20,
+                load: [:trials, :findings, :lines, :grade]
+              )
+    end
+
     read :place_of do
       argument :project, :string, allow_nil?: false
       get? true

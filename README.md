@@ -2,7 +2,7 @@
 
 An agent on a [Fly.io Sprite](https://docs.fly.io/sprites) that runs a 1950s tabloid about your CI. It examines public GitHub Actions pipelines, names what costs time or keeps failing, and prints one newspaper per project while you watch, with moving press photos. Changes are measured on our own test project before we claim an improvement.
 
-Live: https://builddoctor-b6tq7.sprites.app
+Live: https://builddoctor.app
 
 Built for Fly.io Hacksgiving 2026 (November 23 to 29).
 

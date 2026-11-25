@@ -279,3 +279,20 @@ func TestRules(t *testing.T) {
 		}
 	}
 }
+
+func TestAChangeIsShownWhereItBelongs(t *testing.T) {
+	got := changed("a\nb\nc\njobs:\n  test:\n    runs-on: x\n    d\n    e\n    f\n", "a\nb\nc\njobs:\n  test:\n    timeout-minutes: 10\n    runs-on: x\n    d\n    e\n    f\n")
+	want := "  ...\n  jobs:\n    test:\n+     timeout-minutes: 10\n      runs-on: x\n      d"
+	if got != want {
+		t.Fatalf("%q", got)
+	}
+	if got := changed("a\n    needs: vet\nb", "a\nb"); got != "  a\n-     needs: vet\n  b" {
+		t.Fatalf("%q", got)
+	}
+	if got := changed("x", "x"); got != "" {
+		t.Fatalf("%q", got)
+	}
+	if got := changed("", "x"); !strings.Contains(got, "+ x") || len([]rune(changed("", strings.Repeat("long line\n", 900)))) > 3001 {
+		t.Fatalf("%q", got)
+	}
+}

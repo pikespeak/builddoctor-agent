@@ -4,6 +4,7 @@ if config_env() != :test do
   config :builddoctor,
     agent_token: System.get_env("AGENT_TOKEN"),
     requester_key: System.get_env("REQUESTER_KEY"),
+    edge_secret: System.get_env("EDGE_SECRET"),
     imprint_file: System.get_env("IMPRINT_FILE"),
     public_mode: System.get_env("PUBLIC_MODE", "full")
 end
@@ -89,7 +90,12 @@ if config_env() == :prod do
   config :builddoctor, BuilddoctorWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     # The Sprite proxy on the owner's computer uses localhost.
-    check_origin: ["//" <> host, "//localhost"],
+    check_origin:
+      ["//" <> host, "//localhost"] ++
+        for(
+          other <- String.split(System.get_env("OTHER_HOSTS") || "", " ", trim: true),
+          do: "//" <> other
+        ),
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.

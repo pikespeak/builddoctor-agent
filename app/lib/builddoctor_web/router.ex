@@ -28,6 +28,10 @@ defmodule BuilddoctorWeb.Router do
 
   defp not_listed(conn, _), do: conn
 
+  pipeline :feed do
+    plug :put_secure_browser_headers, @headers
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
     plug BuilddoctorWeb.AgentAuth
@@ -50,6 +54,12 @@ defmodule BuilddoctorWeb.Router do
     forward "/", BuilddoctorWeb.AshJsonApiRouter
   end
 
+  scope "/feed", BuilddoctorWeb do
+    pipe_through :feed
+
+    get "/:owner/:name", FeedController, :show
+  end
+
   scope "/", BuilddoctorWeb do
     pipe_through :browser
 
@@ -65,6 +75,7 @@ defmodule BuilddoctorWeb.Router do
       live "/", FrontLive, :index
       live "/archive", ArchiveLive, :index
       live "/how-it-works", HowLive, :show
+      live "/subscribe", SubscribeLive, :show
       live "/a/:id", AuditLive, :show
     end
   end
