@@ -41,6 +41,26 @@ defmodule Builddoctor.Bench.Finding do
       change {Builddoctor.Bench.Changes.Chair, key: :finding_id}
     end
 
+    update :rate do
+      description "What the outside fact-checker says about a published finding, once. The chair never reads it."
+      accept [:support, :support_probability, :fit, :fit_probability, :rated_by]
+      require_atomic? false
+      validate attribute_equals(:status, :published)
+      # In the database, so that a second word never replaces the first.
+      change filter(expr(is_nil(rated_by)))
+
+      validate fn changeset, _ ->
+        [fit, probability] =
+          Enum.map([:fit, :fit_probability], &Ash.Changeset.get_attribute(changeset, &1))
+
+        if is_nil(fit) == is_nil(probability),
+          do: :ok,
+          else: {:error, field: :fit, message: "error.rating.incomplete"}
+      end
+
+      validate present([:support, :support_probability, :rated_by])
+    end
+
     read :for_audit do
       argument :audit_id, :uuid, allow_nil?: false
       filter expr(audit_id == ^arg(:audit_id))
@@ -63,7 +83,7 @@ defmodule Builddoctor.Bench.Finding do
       authorize_if expr(status == :published)
     end
 
-    policy action([:record, :decide]) do
+    policy action([:record, :decide, :rate]) do
       authorize_if actor_attribute_equals(:role, :agent)
     end
   end
@@ -72,6 +92,8 @@ defmodule Builddoctor.Bench.Finding do
     module BuilddoctorWeb.Endpoint
     prefix "audit"
     publish :decide, [:audit_id]
+    publish :rate, [:audit_id]
+    publish :rate, "front"
   end
 
   attributes do
@@ -112,6 +134,21 @@ defmodule Builddoctor.Bench.Finding do
       default: :pending,
       public?: true,
       constraints: [one_of: [:pending, :published, :withheld]]
+
+    # The outside fact-checker: what it says about the weakest sentence and about the advice, and
+    # how probable it finds that the facts support the one and that the other fits.
+    attribute :support, :atom,
+      public?: true,
+      constraints: [one_of: [:supports, :contradicts, :says_nothing]]
+
+    attribute :support_probability, :float, public?: true, constraints: [min: 0, max: 1]
+
+    attribute :fit, :atom,
+      public?: true,
+      constraints: [one_of: [:addresses, :unrelated, :harmful]]
+
+    attribute :fit_probability, :float, public?: true, constraints: [min: 0, max: 1]
+    attribute :rated_by, :string, public?: true, constraints: [max_length: 40]
 
     timestamps()
   end

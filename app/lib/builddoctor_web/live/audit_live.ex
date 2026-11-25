@@ -735,10 +735,33 @@ defmodule BuilddoctorWeb.AuditLive do
                 <.fact fact={fact} audit={@view.audit} />
               </li>
             </ul>
+            <.rating :if={f.rated_by} finding={f} />
           </article>
         </li>
       </ol>
     </section>
+    """
+  end
+
+  # The word of the outside fact-checker. It has no vote, so it stands after the facts.
+  defp rating(assigns) do
+    ~H"""
+    <div class="mt-4 border-3 border-leaf bg-white p-3" data-rating={@finding.support}>
+      <p class="font-bold">
+        Outside fact-checker: Jev by TypeSafe. It has no vote on what is printed.
+      </p>
+      <p class="mt-1">
+        <span class={[
+          "font-display mr-1 inline-block px-2 py-1 text-xl",
+          AuditView.stamp_class(@finding)
+        ]}>
+          {AuditView.stamp(@finding)}
+        </span>
+        {AuditView.support(@finding)}
+      </p>
+      <p :if={@finding.fit} class="mt-1">{AuditView.fit(@finding)}</p>
+      <p class="mt-1 text-base text-moss">A model's probabilities, not a measurement.</p>
+    </div>
     """
   end
 

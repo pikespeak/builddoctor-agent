@@ -328,7 +328,10 @@ func (d Doctor) foreign(ctx context.Context, au *Audit) (failed error) {
 	if err != nil {
 		return err
 	}
-	if err := d.press(ctx, au.ID, figure, facts, drawn); err != nil {
+	rated := async(func() (struct{}, error) { d.rate(ctx, au.ID, facts); return struct{}{}, nil })
+	err = d.press(ctx, au.ID, figure, facts, drawn)
+	rated()
+	if err != nil {
 		return err
 	}
 	return d.Ash.FinishExamination(ctx, au.ID, f.Jobs)

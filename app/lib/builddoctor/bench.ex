@@ -51,6 +51,7 @@ defmodule Builddoctor.Bench do
         index :for_audit, route: "/for_audit/:audit_id"
         post :record
         patch :decide, route: "/:id/decide"
+        patch :rate, route: "/:id/rate"
       end
 
       base_route "/reviews", Review do
@@ -134,6 +135,7 @@ defmodule Builddoctor.Bench do
 
     resource Finding do
       define :decide_finding, action: :decide
+      define :rate_finding, action: :rate
       define :record_finding, action: :record
       define :list_findings, action: :for_audit, args: [:audit_id]
     end

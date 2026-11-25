@@ -60,6 +60,13 @@ defmodule BuilddoctorWeb.ArchiveLive do
               </time>
               <strong class="block text-lg break-words">{audit.repository}</strong>
               <span class="break-words">{AuditView.summary(audit)}</span>
+              <span
+                :for={finding <- Enum.take(audit.findings, 1)}
+                :if={finding.rated_by}
+                class="mt-1 block"
+              >
+                <Press.stamp finding={finding} />
+              </span>
             </span>
           </a>
         </li>

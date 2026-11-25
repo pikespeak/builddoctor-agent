@@ -61,7 +61,16 @@ defmodule Builddoctor.Bench.AgentEvent do
       allow_nil?: false,
       public?: true,
       constraints: [
-        one_of: [:github, :openai, :patch, :run_started, :run_finished, :verdict, :stopped]
+        one_of: [
+          :github,
+          :openai,
+          :typesafe,
+          :patch,
+          :run_started,
+          :run_finished,
+          :verdict,
+          :stopped
+        ]
       ]
 
     attribute :status, :atom,

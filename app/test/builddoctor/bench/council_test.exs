@@ -36,6 +36,73 @@ defmodule Builddoctor.Bench.CouncilTest do
     )
   end
 
+  defp rated(finding, extra \\ %{}) do
+    Bench.rate_finding(
+      finding,
+      Map.merge(
+        %{
+          support: :supports,
+          support_probability: 0.91,
+          fit: :addresses,
+          fit_probability: 0.97,
+          rated_by: "jev-1.14.0"
+        },
+        extra
+      ),
+      @agent
+    )
+  end
+
+  test "the fact-checker rates a published finding once and has no vote" do
+    finding = finding(planted())
+    assert {:error, _} = rated(finding)
+    published = Council.pass!(finding)
+    assert published.status == :published
+
+    for bad <- [
+          %{support_probability: 1.2},
+          %{fit_probability: -0.1},
+          %{support: :perfect},
+          %{rated_by: nil},
+          %{support: nil},
+          %{fit: nil},
+          %{fit_probability: nil}
+        ],
+        do: assert({:error, _} = rated(published, bad))
+
+    for actor <- [nil, Actor.viewer(), Actor.requester()],
+        do:
+          assert(
+            {:error, _} =
+              Bench.rate_finding(
+                published,
+                %{support: :supports, support_probability: 1.0, rated_by: "x"},
+                actor: actor
+              )
+          )
+
+    assert {:ok, done} = rated(published, %{support: :contradicts, support_probability: 0.1})
+    assert done.status == :published and done.support == :contradicts
+    assert {:error, _} = rated(done)
+    # Also with a record that was read before.
+    assert {:error, _} = rated(published)
+
+    assert Bench.list_findings!(published.audit_id, @agent) |> hd() |> Map.get(:support) ==
+             :contradicts
+  end
+
+  test "a small call of the fact-checker costs at least a micro-dollar" do
+    audit = Bench.plant_audit!("cheap/calls", 7)
+
+    call =
+      Bench.record_ai_call!(
+        %{audit_id: audit.id, model: "jev-1.14.0", input_tokens: 100, output_tokens: 0},
+        @agent
+      )
+
+    assert call.micro_dollars == 5
+  end
+
   defp waiting do
     audit = Bench.start_audit!("pikespeak/ci-patient", @sha, @me)
     trial = trial(audit)

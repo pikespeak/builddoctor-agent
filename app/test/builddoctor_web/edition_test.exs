@@ -200,4 +200,90 @@ defmodule BuilddoctorWeb.EditionTest do
       assert Press.alt(%{scene: scene, figure: figure}) =~ ~r/\A[A-Z].+\.\z/
     end
   end
+
+  test "the word of the fact-checker stands under a finding and comes live", %{conn: conn} do
+    audit = Bench.plant_audit!("jev/jev", 9) |> Bench.record_facts!(%{facts: @facts}, @agent)
+    finding = audit |> finding(1, :waiting) |> Builddoctor.Council.pass!()
+    {:ok, view, _} = live(conn, ~p"/a/#{audit.id}")
+    refute render(view) =~ "Outside fact-checker"
+
+    Bench.rate_finding!(
+      finding,
+      %{
+        support: :supports,
+        support_probability: 0.912,
+        fit: :addresses,
+        fit_probability: 0.97,
+        rated_by: "jev-1.14.0"
+      },
+      @agent
+    )
+
+    send(view.pid, :refresh)
+
+    assert has_element?(
+             view,
+             "[data-rating=supports]",
+             "Lowest estimated probability of support: 91\u00A0%."
+           )
+
+    assert render(view) =~ "It has no vote on what is printed." and render(view) =~ "97\u00A0%"
+  end
+
+  defp printed(repository, place, rating) do
+    audit = Bench.plant_audit!(repository, place)
+    audit = Bench.record_facts!(audit, %{facts: @facts, examined_jobs: []}, @agent)
+    finding = audit |> finding(1, :waiting, "Story of #{repository}") |> Council.pass!()
+    audit |> order(1, :queue, finding) |> develop()
+    Bench.finish_examination!(audit, %{}, @agent)
+    if rating, do: Bench.rate_finding!(finding, Map.put(rating, :rated_by, "jev-1.14.0"), @agent)
+    finding
+  end
+
+  test "the fact-checker picks the front page among the newest stories", %{conn: conn} do
+    printed("a/unrated", 1, nil)
+    {:ok, home, _} = live(conn, ~p"/")
+    assert has_element?(home, "#lead", "Story of a/unrated")
+    refute has_element?(home, "#picked")
+
+    printed("a/sure", 2, %{support: :supports, support_probability: 0.95})
+    printed("a/less", 3, %{support: :supports, support_probability: 0.9})
+    printed("a/unsure", 4, %{support: :supports, support_probability: 0.6})
+    printed("a/odd", 5, %{support: :contradicts, support_probability: 0.99})
+    {:ok, home, _} = live(conn, ~p"/")
+    assert has_element?(home, "#lead", "Story of a/sure")
+    assert has_element?(home, "#picked", "Jev: Supported, 95\u00A0%")
+    assert has_element?(home, "#project-4", "Jev: Uncertain, 60\u00A0%")
+    refute has_element?(home, "#project-1", "Jev:")
+    {:ok, archive, _} = live(conn, ~p"/archive")
+    assert has_element?(archive, "#archive", "Jev: Disputed, 99\u00A0%")
+
+    for place <- 6..15, do: printed("b/new" <> <<?a + place>>, place, nil)
+    {:ok, home, _} = live(conn, ~p"/")
+    assert has_element?(home, "#lead", "Story of b/newp")
+  end
+
+  test "the fact-checker's words" do
+    assert BuilddoctorWeb.AuditView.stamp(%{support: nil}) == nil
+
+    assert BuilddoctorWeb.AuditView.percent(1.0) == "over 99\u00A0%"
+    assert BuilddoctorWeb.AuditView.percent(0.991) == "over 99\u00A0%"
+    assert BuilddoctorWeb.AuditView.percent(0.99) == "99\u00A0%"
+    assert BuilddoctorWeb.AuditView.percent(0.0) == "under 1\u00A0%"
+
+    alias BuilddoctorWeb.AuditView
+
+    for {support, p, stamp} <- [
+          {:supports, 0.8, "Supported"},
+          {:supports, 0.79, "Uncertain"},
+          {:contradicts, 0.1, "Disputed"},
+          {:says_nothing, 0.2, "Open"}
+        ] do
+      f = %{support: support, support_probability: p, fit: :unrelated, fit_probability: 0.2}
+      assert AuditView.stamp(f) == stamp and AuditView.stamp_class(f) =~ "bg-"
+      assert AuditView.support(f) =~ "#{round(p * 100)}\u00A0%"
+      assert AuditView.fit(f) =~ "doubts" and AuditView.fit(f) =~ "20\u00A0%"
+      assert AuditView.fit(%{f | fit: :addresses}) =~ "works on"
+    end
+  end
 end

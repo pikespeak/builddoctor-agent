@@ -67,11 +67,18 @@ defmodule BuilddoctorWeb.FrontLive do
     )
   end
 
-  # The newest edition with a finished picture leads, but no failure or weakness of a project does.
+  # Among the ten newest editions with a finished picture, the fact-checker's highest rating leads;
+  # without a rating, the newest. No failure or weakness of a project leads.
   defp lead(audits) do
-    audits
-    |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
-    |> Enum.find(&leads?/1)
+    newest =
+      audits
+      |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
+      |> Enum.filter(&leads?/1)
+      |> Enum.take(10)
+
+    newest
+    |> Enum.filter(&(AuditView.stamp(hd(&1.findings)) == "Supported"))
+    |> Enum.max_by(&hd(&1.findings).support_probability, fn -> List.first(newest) end)
   end
 
   # The newest lines of the agent's editor.
@@ -276,6 +283,7 @@ defmodule BuilddoctorWeb.FrontLive do
               tag={tag(audit)}
               grade={audit.grade}
               picture={story(audit.pictures)}
+              finding={List.first(audit.findings)}
             />
           </li>
         </ul>
@@ -352,6 +360,10 @@ defmodule BuilddoctorWeb.FrontLive do
           </p>
           <p><strong class="break-words">{@audit.repository}:</strong> {@finding.text}</p>
           <p class="font-bold">A suspicion, not proof.</p>
+          <p :if={AuditView.stamp(@finding) == "Supported"} id="picked">
+            <Press.stamp finding={@finding} />
+            Jev by TypeSafe picked this story: the highest estimated support among the ten newest stories that can lead.
+          </p>
           <p :if={@audit.grade}><Press.grade grade={@audit.grade} big /></p>
           <p>
             <a href={~p"/a/#{@audit.id}"} data-track="lead story" class="inline-block py-2 underline">
@@ -405,6 +417,7 @@ defmodule BuilddoctorWeb.FrontLive do
   attr :tag, :string, required: true
   attr :picture, :map, default: nil
   attr :grade, :map, default: nil
+  attr :finding, :map, default: nil
 
   defp card(assigns) do
     ~H"""
@@ -426,6 +439,9 @@ defmodule BuilddoctorWeb.FrontLive do
       <span class="min-w-0 flex-1 basis-44">
         <strong class="block text-lg break-words">{@name}</strong>
         <span class="break-words">{@words}</span>
+        <span :if={@finding && @finding.rated_by} class="mt-1 block">
+          <Press.stamp finding={@finding} />
+        </span>
       </span>
       <span class={["px-3 py-1 text-base font-bold whitespace-nowrap", tag_class(@tag)]}>
         {@tag}

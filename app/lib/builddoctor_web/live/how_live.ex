@@ -33,7 +33,10 @@ defmodule BuilddoctorWeb.HowLive do
      "screens for harmful advice, insults, claims of proof and attempts to steer a model"},
     {"Engineer", "code only",
      "checks that a change stays within the allowed parts, adds no new actionlint error and, if jobs depend on fewer other jobs, is predicted to finish earlier"},
-    {"Chair", "code only", "publishes what passed everything; a missing vote counts as a refusal"}
+    {"Chair", "code only",
+     "publishes what passed everything; a missing vote counts as a refusal"},
+    {"Fact-checker", "Jev by TypeSafe, no vote",
+     "compares every sentence of a published finding with the cited facts and gives a probability; the advice is compared with the problem. Among the ten newest editions that can lead, its highest rating of 80 % or more leads the front page"}
   ]
 
   @limits [
@@ -49,8 +52,8 @@ defmodule BuilddoctorWeb.HowLive do
      "Workflows, runs and jobs. A connector, without a token in the Sprite, starts the trial runs on our own test project. Public projects are read with a token for public data."},
     {"The Sprite",
      "One Fly.io Sprite holds everything: the agent in Go, the page in Phoenix LiveView, the rules in Ash and the database in Postgres. It can sleep while nothing happens; during the contest we keep it awake. A small Fly.io machine in front of it only passes requests on for builddoctor.app."},
-    {"OpenAI",
-     "A second connector, without a key in the Sprite. One model suspects, another one checks. Audit calls are tracked against a shared spending limit."}
+    {"OpenAI and TypeSafe",
+     "Two more connectors, without a key in the Sprite for either. OpenAI: one model suspects, another one checks. TypeSafe: Jev, a decision model, answers typed questions about published findings; if it is silent, the edition appears without its word. Audit calls are tracked against a shared spending limit."}
   ]
 
   @impl true

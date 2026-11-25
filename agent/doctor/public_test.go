@@ -171,7 +171,7 @@ func (w *wood) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 func (w *wood) crew(t *testing.T) (*Crew, *httptest.Server) {
 	s := httptest.NewServer(w)
 	t.Cleanup(s.Close)
-	d := Doctor{NewAsh(s.URL, "secret", s.Client()), NewGitHub(s.URL, "o/r", s.Client()), NewPublic(s.URL, time.Second), NewOpenAI(s.URL, "m", s.Client()), time.Millisecond, time.Second, nil}
+	d := Doctor{NewAsh(s.URL, "secret", s.Client()), NewGitHub(s.URL, "o/r", s.Client()), NewPublic(s.URL, time.Second), NewOpenAI(s.URL, "m", s.Client()), time.Millisecond, time.Second, nil, nil}
 	return &Crew{Doctor: d, Rest: time.Millisecond}, s
 }
 

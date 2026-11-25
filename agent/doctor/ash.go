@@ -66,6 +66,7 @@ type Finding struct {
 	Kind     string   `json:"kind,omitempty"`
 	ID       string   `json:"-"`
 	Status   string   `json:"status,omitempty"`
+	RatedBy  string   `json:"rated_by,omitempty"`
 }
 
 // Review is the word of one role of the council.
@@ -147,6 +148,11 @@ func (a Ash) Review(ctx context.Context, r Review) error {
 // Notify stores a weakness for the requester only.
 func (a Ash) Notify(ctx context.Context, n Notice) error {
 	return a.c.do(ctx, "POST", "/notices", one[Notice]{item[Notice]{Type: "notice", Attributes: n}}, nil)
+}
+
+// Rate stores what the fact-checker said about a published finding.
+func (a Ash) Rate(ctx context.Context, id string, r Rating) error {
+	return a.c.do(ctx, "PATCH", "/findings/"+id+"/rate", one[Rating]{item[Rating]{ID: id, Type: "finding", Attributes: r}}, nil)
 }
 
 // Decide asks the chair; it answers published or withheld.

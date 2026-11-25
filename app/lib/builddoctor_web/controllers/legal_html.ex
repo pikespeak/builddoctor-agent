@@ -69,6 +69,13 @@ defmodule BuilddoctorWeb.LegalHTML do
             rel="noopener"
           >OpenAI's privacy policy</a>.
         </p>
+        <p>
+          For a second opinion we send the sentences and advice of published findings and the facts they cite, with email addresses removed, to TypeSafe through a Fly.io connector. Its model answers with probabilities, which we store and show. We do not include the workflow file or data about your visit. See <a
+            class="underline"
+            href="https://typesafe.ai/legal/privacy-policy"
+            rel="noopener"
+          >TypeSafe's privacy policy</a>.
+        </p>
       </.part>
       <.part title="When you write to us">
         <p>
@@ -82,7 +89,7 @@ defmodule BuilddoctorWeb.LegalHTML do
       </.part>
       <.part title="Other countries">
         <p>
-          Fly.io, OpenAI, GitHub, Tigris, Cloudflare and, if you accept analytics, PostHog are based in the United States or may process data there.
+          Fly.io, OpenAI, TypeSafe, GitHub, Tigris, Cloudflare and, if you accept analytics, PostHog are based in the United States or may process data there.
         </p>
       </.part>
       <.part title="Your right to object">

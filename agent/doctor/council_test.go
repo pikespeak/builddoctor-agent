@@ -136,7 +136,7 @@ func (w *table) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 func (w *table) doctor(t *testing.T) Doctor {
 	s := httptest.NewServer(w)
 	t.Cleanup(s.Close)
-	return Doctor{NewAsh(s.URL, "x", s.Client()), NewGitHub(s.URL, "o/r", s.Client()), NewPublic(s.URL, time.Second), NewOpenAI(s.URL, "m", s.Client()), time.Millisecond, time.Second, nil}
+	return Doctor{NewAsh(s.URL, "x", s.Client()), NewGitHub(s.URL, "o/r", s.Client()), NewPublic(s.URL, time.Second), NewOpenAI(s.URL, "m", s.Client()), time.Millisecond, time.Second, nil, nil}
 }
 
 func find(id, text string) map[string]any {

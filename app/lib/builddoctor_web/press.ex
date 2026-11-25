@@ -207,4 +207,15 @@ defmodule BuilddoctorWeb.Press do
       "M#{rem(i, 25) * 20 + 2} #{div(i, 25) * 20 + 2}h16v16h-16z"
     end
   end
+
+  attr :finding, :map, required: true
+
+  @doc "The fact-checker's word about the first story, small."
+  def stamp(assigns) do
+    ~H"""
+    <span class={["inline-block px-2 font-bold whitespace-nowrap", AuditView.stamp_class(@finding)]}>
+      Jev: {AuditView.stamp(@finding)}, {AuditView.percent(@finding.support_probability)}
+    </span>
+    """
+  end
 end

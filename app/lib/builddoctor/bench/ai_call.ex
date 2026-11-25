@@ -8,11 +8,13 @@ defmodule Builddoctor.Bench.AiCall do
     extensions: [AshJsonApi.Resource]
 
   # Micro-dollars per token, read from the OpenAI pages on 2026-11-23 and 2026-11-24.
+  # TypeSafe: read on 2026-11-25; a fraction of a micro-dollar is rounded up for every call.
   # An image model: text in, image tokens out.
   @prices %{
     "gpt-6.2-astra" => {8, 40},
     "gpt-6.2-sol" => {2, 10},
-    "gpt-image-2.6-flare" => {5, 30}
+    "gpt-image-2.6-flare" => {5, 30},
+    "jev-1.14.0" => {0.042, 0}
   }
   @limit 100_000_000
 
@@ -42,7 +44,11 @@ defmodule Builddoctor.Bench.AiCall do
         with {input, output} <- @prices[get.(:model)],
              i when is_integer(i) <- get.(:input_tokens),
              o when is_integer(o) <- get.(:output_tokens) do
-          Ash.Changeset.force_change_attribute(changeset, :micro_dollars, i * input + o * output)
+          Ash.Changeset.force_change_attribute(
+            changeset,
+            :micro_dollars,
+            ceil(i * input + o * output)
+          )
         else
           _ -> Ash.Changeset.add_error(changeset, field: :model, message: "has no known price")
         end

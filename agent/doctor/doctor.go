@@ -19,6 +19,8 @@ type Doctor struct {
 	RunMax time.Duration
 	// Develop makes a moving picture small; nil means an edition without pictures.
 	Develop func(context.Context, []byte) ([]byte, error)
+	// TypeSafe is the outside fact-checker; nil means none.
+	TypeSafe *TypeSafe
 }
 
 // refused is a reason to stop the audit instead of retrying.

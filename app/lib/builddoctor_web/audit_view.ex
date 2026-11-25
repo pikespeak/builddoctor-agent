@@ -326,6 +326,50 @@ defmodule BuilddoctorWeb.AuditView do
 
   def before_after(_), do: nil
 
+  @doc "What the outside fact-checker says, in words. Below 80 % it is not called sure (its documentation)."
+  def stamp(%{support: nil}), do: nil
+
+  def stamp(f) do
+    cond do
+      f.support == :supports and f.support_probability >= 0.8 -> "Supported"
+      f.support == :supports -> "Uncertain"
+      f.support == :contradicts -> "Disputed"
+      true -> "Open"
+    end
+  end
+
+  def stamp_class(f) do
+    case stamp(f) do
+      "Supported" -> "bg-leaf text-white"
+      "Disputed" -> "bg-madder text-white"
+      _ -> "bg-way"
+    end
+  end
+
+  def support(f) do
+    weakest = "Lowest estimated probability of support: #{percent(f.support_probability)}."
+
+    case stamp(f) do
+      "Supported" -> "The cited facts support every sentence. #{weakest}"
+      "Uncertain" -> "It leans towards support, but it is not sure. #{weakest}"
+      "Disputed" -> "One sentence may not agree with the cited facts. #{weakest}"
+      "Open" -> "The cited facts may not settle one sentence. #{weakest}"
+    end
+  end
+
+  def fit(%{fit: :addresses} = f),
+    do:
+      "Estimated probability that the advice works on the problem: #{percent(f.fit_probability)}."
+
+  def fit(f),
+    do:
+      "It doubts that the advice works on the problem (estimated probability: #{percent(f.fit_probability)})."
+
+  # An estimate is never shown as certain. The space does not break.
+  def percent(p) when p > 0.99, do: "over 99\u00A0%"
+  def percent(p) when p < 0.01, do: "under 1\u00A0%"
+  def percent(p), do: "#{round(p * 100)}\u00A0%"
+
   def number(x) when is_float(x) and trunc(x) == x, do: trunc(x)
   def number(x), do: x
 

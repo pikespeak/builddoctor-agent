@@ -30,6 +30,7 @@ func main() {
 		Poll:   5 * time.Second,
 		RunMax: 20 * time.Minute,
 	}
+	d.TypeSafe = doctor.NewTypeSafe(os.Getenv("TYPESAFE_GATEWAY"), h)
 	if os.Getenv("PICTURES") != "off" {
 		d.Develop = doctor.WebP
 	}
@@ -42,6 +43,13 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	// Rates a finished edition: doctor rate <audit>
+	if len(os.Args) == 3 && os.Args[1] == "rate" {
+		if err := d.RateAgain(ctx, os.Args[2]); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	// Prints an edition that was examined before there was an editor: doctor <audit> <owner/name>
 	if len(os.Args) == 3 {
 		f, err := d.Public.Read(ctx, os.Args[2])
