@@ -77,9 +77,13 @@ main { background: var(--color-paper); }
 @keyframes develop { from { filter: brightness(0); } }
 
 a:focus-visible, button:focus-visible { outline: 4px solid var(--color-leaf); outline-offset: 3px; }
-.page { display: grid; place-items: center; min-height: 2.75rem; border: 1px solid var(--color-bark); font: 400 1rem/1 var(--font-display); cursor: pointer; }
+.page { display: grid; align-content: center; justify-items: center; gap: .25rem; height: 100%; min-height: 4rem; padding: .35rem .25rem; text-align: center; border: 1px solid var(--color-bark); font: 400 1rem/1 var(--font-display); cursor: pointer; }
 .page:hover, .page[data-chosen="true"] { background: var(--color-sun); }
 a.page { background: var(--color-bark); color: var(--color-sun); }
+a.page:hover, a.page:focus-visible { background: var(--color-sun); color: var(--color-bark); }
+.page small { max-width: 100%; font: 700 .75rem/1.15 var(--font-sans); overflow-wrap: anywhere; }
+button.page small { opacity: 0; }
+button.page:hover small, button.page:focus-visible small, button.page[data-chosen="true"] small { opacity: 1; }
 .pc-button { min-height: 2.75rem; }
 @media (prefers-reduced-motion: reduce) { .lines i, .press-photo .dark, .press-photo.developing img { animation: none !important; } }
 .pc-label--required::after { color: inherit !important; }

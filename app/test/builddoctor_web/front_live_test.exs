@@ -24,6 +24,15 @@ defmodule BuilddoctorWeb.FrontLiveTest do
 
     Process.sleep(350)
 
+    assert has_element?(
+             other,
+             "button#place-8[title='Page 8 is free. Print a project here.'] small",
+             "Free"
+           )
+
+    assert has_element?(other, "a#place-7 small")
+    refute has_element?(other, "a#place-7 small", "Free")
+
     assert has_element?(other, "a#place-7[aria-label*='Being read']") and
              has_element?(other, "#project-7", "Being read")
 

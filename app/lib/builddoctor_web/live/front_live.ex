@@ -308,8 +308,8 @@ defmodule BuilddoctorWeb.FrontLive do
       </p>
       <section :if={@may_start} id="pages" class="grid gap-3 border-t-8 border-bark pt-5">
         <h2 class="font-display text-3xl uppercase sm:text-4xl">Choose your page</h2>
-        <p>A black page is printed and can be read. A blank one can be yours.</p>
-        <ol class="grid grid-cols-6 gap-1 sm:grid-cols-10 lg:grid-cols-20">
+        <p>A black page is printed and shows its project. A white one is free and can be yours.</p>
+        <ol class="grid grid-cols-4 gap-1 sm:grid-cols-5 md:grid-cols-10">
           <li :for={slot <- 1..Audit.places()}>
             <.place slot={slot} audit={@planted[slot]} chosen={@chosen == slot} />
           </li>
@@ -369,10 +369,11 @@ defmodule BuilddoctorWeb.FrontLive do
       class="page w-full"
       data-chosen={to_string(@chosen)}
       aria-pressed={to_string(@chosen)}
-      aria-label={"Page #{@slot} is blank. Print a project here."}
+      title={"Page #{@slot} is free. Print a project here."}
+      aria-label={"Page #{@slot} is free. Print a project here."}
       phx-click={JS.push("choose", value: %{slot: to_string(@slot)}) |> JS.focus(to: "#project")}
     >
-      {@slot}
+      <span>{@slot}</span><small aria-hidden="true">Free</small>
     </button>
     <a
       :if={@audit}
@@ -382,10 +383,14 @@ defmodule BuilddoctorWeb.FrontLive do
       title={"#{@audit.repository}: #{tag(@audit)}"}
       aria-label={"Page #{@slot}, #{@audit.repository}: #{tag(@audit)}"}
     >
-      {@slot}
+      <span>{@slot}</span><small>{short(@audit.repository)}</small>
     </a>
     """
   end
+
+  # A long name breaks after a separator (zero-width space), not in the middle of a word.
+  defp short(repository),
+    do: repository |> String.split("/") |> List.last() |> String.replace(~r/[_.-]/, "\\0\u200B")
 
   attr :id, :string, required: true
   attr :name, :string, required: true
