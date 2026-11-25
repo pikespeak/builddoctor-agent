@@ -71,7 +71,11 @@ defmodule BuilddoctorWeb.SubscribeLive do
             class="min-h-12"
           />
           <p :if={@email}>
-            Your mail program opens. If it does not, write to <a class="underline" href={mail(@email)}>{@email}</a>.
+            Your mail program opens. If it does not, write to <a
+              class="underline"
+              data-track="waiting list mail"
+              href={mail(@email)}
+            >{@email}</a>.
           </p>
           <p :if={!@email}>The list is not open yet.</p>
           <p class="text-base">

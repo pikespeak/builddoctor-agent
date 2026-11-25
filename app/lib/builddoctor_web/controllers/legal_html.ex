@@ -22,7 +22,7 @@ defmodule BuilddoctorWeb.LegalHTML do
       <Layouts.brand />
       <h1 class="font-display text-4xl font-bold">Privacy</h1>
       <p>
-        As of November 24, 2026. No visitor account is required. There is no advertising by others and no analytics.
+        As of November 25, 2026. No visitor account is required. There is no advertising by others. Analytics runs only if you accept it.
       </p>
       <.part title="Who is responsible">
         <.contact who={@who} />
@@ -38,7 +38,22 @@ defmodule BuilddoctorWeb.LegalHTML do
       </.part>
       <.part title="Cookie and browser storage">
         <p>
-          The session cookie _builddoctor_key protects forms and, for the operator, holds the time of the sign-in. It expires when your browser session ends. The site's JavaScript uses session storage and local storage to recover the live connection and to navigate. We consider this strictly necessary for the service you asked for (Section 25(2) no. 2 TDDDG). Nothing is used to follow you.
+          The session cookie _builddoctor_key protects forms and, for the operator, holds the time of the sign-in. It expires when your browser session ends. The site's JavaScript uses session storage and local storage to recover the live connection and to navigate. We consider this strictly necessary for the service you asked for (Section 25(2) no. 2 TDDDG). The same applies to your answer about analytics, which is kept in local storage until you delete it there.
+        </p>
+      </.part>
+      <.part id="analytics" title="Analytics, only with your consent">
+        <p>
+          If you accept, your browser loads PostHog from our site and sends usage data to r.builddoctor.app, our PostHog proxy hosted on Cloudflare, and from there to PostHog, Inc., which processes them for us in its EU cloud. Before you consent, PostHog is not loaded and no analytics data are sent. If your browser sends Do Not Track or Global Privacy Control, we count this as a no. The operator is not measured while signed in.
+        </p>
+        <p>
+          The data are: the kind of page, without its query and without the ID of an edition; how long and how far it was read; named controls that were used; the domain you came from and which of our own posts you followed; random IDs for browser and visit; browser, operating system, device type, language, time zone and window size; and the time. We leave out what you type, page titles, texts and project names. There are no session recordings. Your IP address reaches PostHog when the data are sent; we have set PostHog to discard it and not to derive a place from it.
+        </p>
+        <p>
+          PostHog keeps the random IDs and the visit in local and session storage. The purpose is to learn how the page is used and to improve it. The legal basis is your consent (Section 25(1) TDDDG, Art. 6(1)(a) GDPR). It is voluntary, and you can withdraw it at any time with “Analytics choice” at the bottom of the page; this stops the sending and deletes PostHog's data in this browser. Withdrawing consent does not affect processing that took place before you withdrew it. Events are kept in our PostHog project for 12 months and are then deleted during the next monthly cleanup, which can take up to about another month. See <a
+            class="underline"
+            href="https://posthog.com/privacy"
+            rel="noopener"
+          >PostHog's privacy policy</a>.
         </p>
       </.part>
       <.part title="When you enter a project">
@@ -67,7 +82,7 @@ defmodule BuilddoctorWeb.LegalHTML do
       </.part>
       <.part title="Other countries">
         <p>
-          Fly.io, OpenAI, GitHub, Tigris and Cloudflare are based in the United States or may process data there.
+          Fly.io, OpenAI, GitHub, Tigris, Cloudflare and, if you accept analytics, PostHog are based in the United States or may process data there.
         </p>
       </.part>
       <.part title="Your right to object">
@@ -85,12 +100,13 @@ defmodule BuilddoctorWeb.LegalHTML do
     """
   end
 
+  attr :id, :string, default: nil
   attr :title, :string, required: true
   slot :inner_block, required: true
 
   defp part(assigns) do
     ~H"""
-    <section class="grid gap-2">
+    <section id={@id} class="grid gap-2">
       <h2 class="font-display text-2xl font-bold">{@title}</h2>
       {render_slot(@inner_block)}
     </section>

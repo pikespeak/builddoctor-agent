@@ -63,10 +63,64 @@ defmodule BuilddoctorWeb.Layouts do
   @doc "Always one click away."
   def legal(assigns) do
     ~H"""
-    <nav aria-label="Legal" class="flex flex-wrap gap-x-6">
+    <nav aria-label="About this site" class="flex flex-wrap gap-x-6">
       <a href={~p"/imprint"} class="inline-flex min-h-11 items-center underline">Imprint</a>
       <a href={~p"/privacy"} class="inline-flex min-h-11 items-center underline">Privacy</a>
+      <a
+        href="https://fly.io/hacksgiving/"
+        rel="noopener"
+        class="inline-flex min-h-11 items-center underline"
+      >
+        Built for Fly.io Hacksgiving 2026
+      </a>
+      <button
+        :if={BuilddoctorWeb.Analytics.settings()}
+        type="button"
+        data-analytics-do="open"
+        class="analytics-choice min-h-11 cursor-pointer items-center underline"
+      >
+        Analytics choice
+      </button>
     </nav>
+    """
+  end
+
+  attr :settings, :map, required: true
+
+  @doc "Asks before PostHog is loaded. Hidden until consent.js has a reason to show it."
+  def analytics_consent(assigns) do
+    ~H"""
+    <section
+      id="analytics-consent"
+      hidden
+      tabindex="-1"
+      aria-labelledby="analytics-title"
+      class="group/analytics fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto border-t-4 border-bark bg-white p-3 sm:p-4"
+      data-site={@settings.site}
+      data-key={@settings.key}
+      data-host={@settings.host}
+      data-src={~p"/assets/js/analytics.js"}
+    >
+      <div class="mx-auto grid max-w-3xl gap-2 sm:gap-3 group-data-[signal=true]/analytics:hidden">
+        <h2 id="analytics-title" class="font-display text-xl sm:text-2xl">
+          May we count your visit?
+        </h2>
+        <p>
+          If you accept, PostHog stores an ID here and reports the pages and buttons you use. Undo it in the footer. <a
+            href={~p"/privacy#analytics"}
+            class="underline"
+          >Privacy</a>.
+        </p>
+        <div class="grid grid-cols-2 gap-3">
+          <button type="button" data-analytics-do="decline" class="consent-button">Decline</button>
+          <button type="button" data-analytics-do="accept" class="consent-button">Accept</button>
+        </div>
+      </div>
+      <div class="mx-auto hidden max-w-3xl gap-3 group-data-[signal=true]/analytics:grid">
+        <p>Your browser asks websites not to track you. We respect that, so analytics stays off.</p>
+        <button type="button" data-analytics-do="close" class="consent-button">Close</button>
+      </div>
+    </section>
     """
   end
 

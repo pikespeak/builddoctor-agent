@@ -5,6 +5,8 @@ if config_env() != :test do
     agent_token: System.get_env("AGENT_TOKEN"),
     requester_key: System.get_env("REQUESTER_KEY"),
     edge_secret: System.get_env("EDGE_SECRET"),
+    posthog_key: System.get_env("POSTHOG_KEY"),
+    posthog_host: System.get_env("POSTHOG_HOST"),
     imprint_file: System.get_env("IMPRINT_FILE"),
     public_mode: System.get_env("PUBLIC_MODE", "full")
 end

@@ -180,6 +180,7 @@ defmodule BuilddoctorWeb.FrontLive do
         :if={@may_start and @free != []}
         id="plant"
         phx-submit="plant"
+        data-track="print"
         class="flex flex-wrap items-end gap-3 border-3 border-dashed border-bark bg-sun p-4"
       >
         <Field.field
@@ -304,7 +305,11 @@ defmodule BuilddoctorWeb.FrontLive do
       <p id="own-ad" class="border-3 border-dashed border-bark bg-sun p-4 text-lg">
         <strong>Advertisement.</strong>
         Your private pipelines have stories, too.
-        <a href={~p"/subscribe"} class="inline-block py-2 font-bold underline">Join the free waiting list for private editions</a>
+        <a
+          href={~p"/subscribe"}
+          data-track="waiting list ad"
+          class="inline-block py-2 font-bold underline"
+        >Join the free waiting list for private editions</a>
       </p>
       <section :if={@may_start} id="pages" class="grid gap-3 border-t-8 border-bark pt-5">
         <h2 class="font-display text-3xl uppercase sm:text-4xl">Choose your page</h2>
@@ -349,7 +354,7 @@ defmodule BuilddoctorWeb.FrontLive do
           <p class="font-bold">A suspicion, not proof.</p>
           <p :if={@audit.grade}><Press.grade grade={@audit.grade} big /></p>
           <p>
-            <a href={~p"/a/#{@audit.id}"} class="inline-block py-2 underline">
+            <a href={~p"/a/#{@audit.id}"} data-track="lead story" class="inline-block py-2 underline">
               Full story on page {@audit.slot}
             </a>
           </p>
@@ -367,6 +372,7 @@ defmodule BuilddoctorWeb.FrontLive do
       type="button"
       id={"place-#{@slot}"}
       class="page w-full"
+      data-track="free page"
       data-chosen={to_string(@chosen)}
       aria-pressed={to_string(@chosen)}
       title={"Page #{@slot} is free. Print a project here."}
@@ -379,6 +385,7 @@ defmodule BuilddoctorWeb.FrontLive do
       :if={@audit}
       id={"place-#{@slot}"}
       class="page"
+      data-track="printed page"
       href={~p"/a/#{@audit.id}"}
       title={"#{@audit.repository}: #{tag(@audit)}"}
       aria-label={"Page #{@slot}, #{@audit.repository}: #{tag(@audit)}"}
@@ -401,7 +408,11 @@ defmodule BuilddoctorWeb.FrontLive do
 
   defp card(assigns) do
     ~H"""
-    <a href={~p"/a/#{@id}"} class="flex flex-wrap items-start gap-4 border-b-2 border-bark py-4">
+    <a
+      href={~p"/a/#{@id}"}
+      data-track="edition card"
+      class="flex flex-wrap items-start gap-4 border-b-2 border-bark py-4"
+    >
       <img
         :if={@picture}
         src={Press.photo_url(@picture, "jpg")}

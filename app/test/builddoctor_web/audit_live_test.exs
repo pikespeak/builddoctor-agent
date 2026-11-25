@@ -192,9 +192,9 @@ defmodule BuilddoctorWeb.AuditLiveTest do
     Bench.evaluate_trial!(trial, @agent)
     Bench.finish_audit!(audit, @agent)
     {:ok, _, html} = live(conn, ~p"/a/#{audit.id}")
-    assert html =~ "1 billed minute back, every run."
+    assert html =~ "1 calculated runner minute back, every run."
     assert html =~ "Run 1 of 8 finished." and not (html =~ "Run 1 of 8 started.")
-    assert html =~ "median Bill"
+    assert html =~ "Median runner minutes (calculated)"
   end
 
   test "a whole saving in every run and half seconds are named exactly", %{conn: conn} do
@@ -337,7 +337,7 @@ defmodule BuilddoctorWeb.AuditLiveTest do
   test "a broken change is shown as such, with a bill goal", %{conn: conn} do
     {audit, trial} = waiting(:bill)
     {:ok, _, html} = live(conn, ~p"/a/#{audit.id}")
-    assert html =~ "Bill"
+    assert html =~ "Runner minutes (calculated)"
     audit = Bench.approve_audit!(audit, actor: Actor.requester())
 
     Bench.record_run!(

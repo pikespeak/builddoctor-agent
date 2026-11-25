@@ -19,6 +19,7 @@ defmodule BuilddoctorWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers, @headers
     plug BuilddoctorWeb.Visitor
+    plug BuilddoctorWeb.Analytics
     plug :not_listed
   end
 

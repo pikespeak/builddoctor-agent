@@ -48,7 +48,7 @@ defmodule BuilddoctorWeb.HowLive do
     {"GitHub",
      "Workflows, runs and jobs. A connector, without a token in the Sprite, starts the trial runs on our own test project. Public projects are read with a token for public data."},
     {"The Sprite",
-     "One Fly.io Sprite holds everything: the agent in Go, the page in Phoenix LiveView, the rules in Ash and the database in Postgres. It sleeps while nothing happens. A small Fly.io machine in front of it only passes requests on for builddoctor.app."},
+     "One Fly.io Sprite holds everything: the agent in Go, the page in Phoenix LiveView, the rules in Ash and the database in Postgres. It can sleep while nothing happens; during the contest we keep it awake. A small Fly.io machine in front of it only passes requests on for builddoctor.app."},
     {"OpenAI",
      "A second connector, without a key in the Sprite. One model suspects, another one checks. Audit calls are tracked against a shared spending limit."}
   ]

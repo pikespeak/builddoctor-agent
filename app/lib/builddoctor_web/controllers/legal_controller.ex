@@ -1,5 +1,5 @@
 defmodule BuilddoctorWeb.LegalController do
-  @moduledoc "Imprint and privacy notice, without a script of anybody else."
+  @moduledoc "Imprint and privacy notice, without a script of anybody else unless analytics is accepted."
   use BuilddoctorWeb, :controller
 
   def imprint(conn, _), do: page(conn, :imprint, "Imprint")

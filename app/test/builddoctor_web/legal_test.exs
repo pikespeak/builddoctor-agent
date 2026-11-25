@@ -81,6 +81,7 @@ defmodule BuilddoctorWeb.LegalTest do
     for path <- [~p"/", ~p"/how-it-works", ~p"/a/nonsense"] do
       {:ok, view, _} = live(conn, path)
       for to <- ["/imprint", "/privacy"], do: assert(has_element?(view, "a[href='#{to}']"))
+      assert has_element?(view, "a[href='https://fly.io/hacksgiving/']", "Hacksgiving 2026")
     end
 
     for path <- ["/requester", "/imprint", "/privacy"],

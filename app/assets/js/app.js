@@ -24,6 +24,7 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/builddoctor"
 import topbar from "../vendor/topbar"
+import consent from "./consent"
 
 const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches
 // One text after the other, in the order of the page.
@@ -106,6 +107,7 @@ window.addEventListener("builddoctor:copy", async ({target, detail}) => {
 })
 
 liveSocket.connect()
+consent()
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()

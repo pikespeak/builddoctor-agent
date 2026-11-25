@@ -208,13 +208,13 @@ defmodule BuilddoctorWeb.AuditLive do
 
   def render(assigns) do
     ~H"""
-    <main class="mx-auto grid max-w-6xl gap-6 px-4 py-6">
+    <main class="mx-auto grid grid-cols-1 max-w-6xl gap-6 px-4 py-6">
       <Layouts.brand />
       <h1 class="font-display text-2xl break-words sm:text-4xl">
         {@view.audit.repository}{if @view.audit.slot, do: ", page #{@view.audit.slot}"}
       </h1>
       <.edition :if={foreign?(@view.audit)} view={@view} live={@live} />
-      <section aria-live="polite" class="grid gap-4 text-lg">
+      <section aria-live="polite" class="grid grid-cols-1 gap-4 text-lg">
         <.moment
           view={@view}
           requester={@requester}
@@ -255,9 +255,9 @@ defmodule BuilddoctorWeb.AuditLive do
         id="follow"
         class="max-w-prose border-l-4 border-bark pl-4"
       >
-        <a class="inline-block py-2 font-bold underline" href={feed(@view.audit)}>Follow this project in a feed reader</a>
+        <a class="inline-block py-2 font-bold underline" data-track="feed" href={feed(@view.audit)}>Follow this project in a feed reader</a>
         New editions appear there when somebody prints one again. Private repositories:
-        <a class="inline-block py-2 underline" href={~p"/subscribe"}>join the waiting list</a>
+        <a class="inline-block py-2 underline" data-track="waiting list" href={~p"/subscribe"}>join the waiting list</a>
       </p>
       <section :if={@view.events != []}>
         <h2 class="font-display text-2xl font-bold">How this edition was made</h2>
@@ -324,6 +324,7 @@ defmodule BuilddoctorWeb.AuditLive do
         type="button"
         variant="outline"
         label="Copy the link"
+        data-track="copy link"
         phx-click={JS.dispatch("builddoctor:copy", detail: %{text: url(~p"/a/#{@view.audit.id}")})}
       />
       <PC.button link_type="a" to={~p"/"} variant="outline" label="Back to the front page" />
@@ -458,18 +459,20 @@ defmodule BuilddoctorWeb.AuditLive do
 
     ~H"""
     <h2 class="font-display text-3xl font-bold">{@headline}</h2>
-    <p :if={@medians} class="text-2xl font-bold tabular-nums">
-      {Enum.at(@medians, 0)} <span aria-hidden="true">→</span>
-      <span class="sr-only">before,</span> {Enum.at(@medians, 1)}
-      <span class="text-base font-normal">
-        <span class="sr-only">with the change,</span> median {AuditView.goal(@view.trial.goal)}
-      </span>
-    </p>
+    <div :if={@medians} id="medians" class="border-l-4 border-leaf pl-5 tabular-nums">
+      <p class="text-5xl font-bold sm:text-6xl">
+        {Enum.at(@medians, 0)} <span aria-hidden="true">→</span>
+        <span class="sr-only">before,</span> {Enum.at(@medians, 1)}
+        <span class="sr-only">with the change</span>
+      </p>
+      <p class="mt-2 text-lg">
+        Median {String.downcase(AuditView.goal(@view.trial.goal))}, before and with the change
+      </p>
+    </div>
     <p>{@reason}</p>
     <div>
       <PC.button
         phx-click="proof"
-        variant="ghost"
         aria-expanded={to_string(@proof)}
         label="Show the proof"
       />
@@ -484,13 +487,16 @@ defmodule BuilddoctorWeb.AuditLive do
         <tbody>
           <tr :for={m <- ["wait", "bill"]}>
             <th scope="row" class="pr-6">
-              {String.capitalize(m)}{if m == @n["goal"], do: " (goal)"}
+              {AuditView.goal(m)}{if m == @n["goal"], do: " (goal)"}
             </th>
             <td :for={s <- ["baseline", "candidate"]} class="pr-6">{range(@n[s], m)}</td>
           </tr>
         </tbody>
       </table>
     </div>
+    <p class="text-base text-moss">
+      Run time is from the start of the run to the end of its last job. Runner minutes are rounded up for every job by our code, not taken from a bill.
+    </p>
     <ul :if={@proof} class="grid gap-1">
       <li :for={r <- @view.runs}>
         <a
@@ -498,7 +504,7 @@ defmodule BuilddoctorWeb.AuditLive do
           rel="noopener"
           href={"https://github.com/#{@view.audit.repository}/actions/runs/#{r.github_run_id}"}
         >
-          {if r.trial_id, do: "With the change", else: "Before"}: {r.wall_seconds} s, {r.billed_minutes} billed min
+          {if r.trial_id, do: "With the change", else: "Before"}: {r.wall_seconds} s, {r.billed_minutes} calculated min
         </a>
         {if r.warmup, do: " (warm-up, not counted)"}{if !r.succeeded, do: " (failed)"}
       </li>
@@ -756,7 +762,7 @@ defmodule BuilddoctorWeb.AuditLive do
     <section id="notices" class="grid gap-2 border-2 border-madder bg-white p-4 sm:p-6">
       <h2 class="font-display text-2xl font-bold">Only you see this</h2>
       <p>Tell the maintainer first. Visitors and models do not get these lines.</p>
-      <ul class="grid list-disc gap-1 pl-6">
+      <ul class="grid list-disc gap-1 pl-6 wrap-anywhere">
         <li :for={n <- @notices}>Line {n.line}: {AuditView.notice(n)}</li>
       </ul>
     </section>
@@ -768,7 +774,7 @@ defmodule BuilddoctorWeb.AuditLive do
     <section :if={(@view.audit.facts || []) != []} id="facts" class="grid gap-3">
       <h2 class="font-display text-2xl font-bold">Facts</h2>
       <p>Computed from GitHub's data, without a model.</p>
-      <ul class="grid list-disc gap-1 pl-6">
+      <ul class="grid list-disc gap-1 pl-6 wrap-anywhere">
         <li :for={fact <- @view.audit.facts}><.fact fact={fact} audit={@view.audit} /></li>
       </ul>
     </section>

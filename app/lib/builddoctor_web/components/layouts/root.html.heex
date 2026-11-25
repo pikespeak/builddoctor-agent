@@ -11,5 +11,6 @@
   </head>
   <body class="bg-sun text-bark">
     {@inner_content}
+    <.analytics_consent :if={assigns[:analytics]} settings={assigns[:analytics]} />
   </body>
 </html>

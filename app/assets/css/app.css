@@ -76,6 +76,11 @@ main { background: var(--color-paper); }
 .press-photo.developing img { animation: develop 2.6s ease-out; }
 @keyframes develop { from { filter: brightness(0); } }
 
+.analytics-choice { display: none; }
+html[data-analytics] .analytics-choice { display: inline-flex; }
+.consent-button { min-height: 3rem; border: 3px solid var(--color-bark); background: #fff; font-weight: 700; cursor: pointer; }
+.consent-button:hover { background: var(--color-sun); }
+
 a:focus-visible, button:focus-visible { outline: 4px solid var(--color-leaf); outline-offset: 3px; }
 .page { display: grid; align-content: center; justify-items: center; gap: .25rem; height: 100%; min-height: 4rem; padding: .35rem .25rem; text-align: center; border: 1px solid var(--color-bark); font: 400 1rem/1 var(--font-display); cursor: pointer; }
 .page:hover, .page[data-chosen="true"] { background: var(--color-sun); }

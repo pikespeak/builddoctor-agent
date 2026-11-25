@@ -32,6 +32,7 @@ defmodule BuilddoctorWeb.Suggestion do
         <PC.button
           link_type="a"
           to={~p"/a/#{@audit.id}/change.patch"}
+          data-track="patch"
           variant="outline"
           download
           label="Download the patch"
@@ -53,6 +54,7 @@ defmodule BuilddoctorWeb.Suggestion do
           type="button"
           variant="outline"
           label="Copy the command"
+          data-track="copy command"
           phx-click={JS.dispatch("builddoctor:copy", detail: %{text: command(@audit, @trial)})}
         />
       </p>

@@ -316,8 +316,8 @@ defmodule BuilddoctorWeb.AuditView do
   defp noun(goal, amount \\ 2)
   defp noun(:wait, amount) when amount == 1, do: "second"
   defp noun(:wait, _), do: "seconds"
-  defp noun(:bill, amount) when amount == 1, do: "billed minute"
-  defp noun(:bill, _), do: "billed minutes"
+  defp noun(:bill, amount) when amount == 1, do: "calculated runner minute"
+  defp noun(:bill, _), do: "calculated runner minutes"
 
   @doc "Median before and with the change, for the goal; nil without runs on both sides."
   def before_after(%{"goal" => goal, "baseline" => %{} = base, "candidate" => %{} = cand}) do
@@ -329,8 +329,9 @@ defmodule BuilddoctorWeb.AuditView do
   def number(x) when is_float(x) and trunc(x) == x, do: trunc(x)
   def number(x), do: x
 
-  def goal(:wait), do: "Wait"
-  def goal(:bill), do: "Bill"
+  @doc "What a goal means to a reader: a Wait lasts from the start of a run to its last job."
+  def goal(goal) when goal in [:wait, "wait"], do: "Run time"
+  def goal(goal) when goal in [:bill, "bill"], do: "Runner minutes (calculated)"
   def unit("wait"), do: "s"
   def unit("bill"), do: "min"
 end
