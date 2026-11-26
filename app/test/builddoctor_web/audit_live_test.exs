@@ -449,6 +449,38 @@ defmodule BuilddoctorWeb.AuditLiveTest do
     assert render(reading) =~ "No audit here"
   end
 
+  test "a proposal the council refused is not shown as waiting", %{conn: conn} do
+    audit = audit()
+
+    trial =
+      Bench.propose_trial!(
+        %{
+          audit_id: audit.id,
+          attempt: 1,
+          goal: :wait,
+          hypothesis: "Refused idea.",
+          original: "a\nneeds",
+          patch: "a",
+          branch: "builddoctor/x-trial"
+        },
+        @agent
+      )
+
+    audit = Bench.request_approval!(audit, %{}, @agent)
+    Council.review!(trial, :qa, :fail)
+    Council.review!(trial, :safety)
+    Council.review!(trial, :engineer)
+    Council.decide!(trial)
+    Bench.leave_to_requester!(audit, @agent)
+    {:ok, _view, html} = live(conn, ~p"/a/#{audit.id}")
+    assert html =~ "The council did not pass this proposal"
+    refute html =~ "The council is checking" or html =~ "Refused idea."
+    {:ok, home, _} = live(conn, ~p"/")
+    assert has_element?(home, "#own", "Not passed")
+    assert has_element?(home, "#own", "did not pass the proposal")
+    refute has_element?(home, "#own", "Waiting")
+  end
+
   test "before the council has passed it, nothing of a proposal is shown", %{conn: conn} do
     audit = audit()
 

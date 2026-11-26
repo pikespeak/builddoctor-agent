@@ -1,6 +1,7 @@
 import Config
 
 config :builddoctor, Oban, testing: :manual
+config :builddoctor, notice_gateway_prefix: "http://127.0.0.1:"
 
 config :builddoctor,
   agent_token: "test-agent-token-0123456789abcdef",

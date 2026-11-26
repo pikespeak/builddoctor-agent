@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
@@ -11,6 +12,7 @@ import (
 func curious(asks ...string) *wood {
 	w := newWood()
 	w.asks, w.asked = asks, 5
+	w.model = `{"goal":"wait","hypothesis":"The cache helps.","edits":[{"kind":"enable_setup_cache","job":"vet"}]}`
 	w.open["a"] = "some/project"
 	w.jobs = `{"total_count":1,"jobs":[{"name":"vet","conclusion":"success","started_at":"2026-11-23T10:00:00Z","completed_at":"2026-11-23T10:00:09Z","steps":[{"name":"Run <b>vet</b>","started_at":"2026-11-23T10:00:01Z","completed_at":"2026-11-23T10:00:08Z"},{"name":"no end","started_at":"2026-11-23T10:00:01Z"}]}]}`
 	return w
@@ -176,6 +178,28 @@ func TestMedian(t *testing.T) {
 	}
 	if got, _ := workflowHistory("x", []past{{Conclusion: "success", Seconds: 7}}); !strings.HasSuffix(got, "The successful run took 7 s.") {
 		t.Fatal(got)
+	}
+}
+
+func TestAfterARestartAChangedProjectStops(t *testing.T) {
+	w := newTable()
+	w.finds = []map[string]any{find("f", "x")}
+	w.status["f"] = "pending"
+	wd := newWood()
+	c, _ := wd.crew(t)
+	d := c.Doctor
+	d.Ash = w.doctor(t).Ash
+	d.OpenAI = w.doctor(t).OpenAI
+	for _, au := range []Audit{
+		{BaseSHA: strings.Repeat("e", 40), WorkflowPath: ".github/workflows/ci.yml"}, // a newer commit
+		{BaseSHA: sha40, WorkflowPath: ".github/workflows/other.yml"},                // another file
+	} {
+		au.ID, au.State, au.Repository, au.Facts = "a", "examining", "some/project", []Fact{{ID: "run", Text: "It took 5 s."}}
+		err := d.foreign(context.Background(), &au)
+		var r refused
+		if !errors.As(err, &r) || !strings.Contains(err.Error(), "changed during the examination") || len(w.calls) != 0 {
+			t.Fatal(au, err, w.calls)
+		}
 	}
 }
 

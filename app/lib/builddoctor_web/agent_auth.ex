@@ -17,6 +17,7 @@ defmodule BuilddoctorWeb.AgentAuth do
            Application.get_env(:builddoctor, :agent_token),
          ["Bearer " <> given] <- get_req_header(conn, "authorization"),
          true <- Plug.Crypto.secure_compare(given, secret) do
+      BuilddoctorWeb.Health.agent_seen()
       Ash.PlugHelpers.set_actor(conn, Actor.agent())
     else
       _ -> conn |> send_resp(401, "") |> halt()

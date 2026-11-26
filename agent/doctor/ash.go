@@ -20,7 +20,9 @@ type Audit struct {
 	State      string `json:"state"`
 	Repository string `json:"repository"`
 	BaseSHA    string `json:"base_sha"`
-	Facts      []Fact `json:"facts"`
+	// WorkflowPath is the examined file once the audit is identified.
+	WorkflowPath string `json:"workflow_path"`
+	Facts        []Fact `json:"facts"`
 }
 
 // Trial as the application reports it. Original and Patch hold the workflow file before and after.

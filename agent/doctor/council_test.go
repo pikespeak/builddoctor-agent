@@ -295,4 +295,8 @@ func TestAChangeIsShownWhereItBelongs(t *testing.T) {
 	if got := changed("", "x"); !strings.Contains(got, "+ x") || len([]rune(changed("", strings.Repeat("long line\n", 900)))) > 3001 {
 		t.Fatalf("%q", got)
 	}
+	empty := strings.Repeat("\n", 18_000) // 18 kB; a full table would need about 2.6 GB
+	if got := changed(empty, empty+"x"); got != "The file is too long to show the change." || !diffable(empty, "x\n") || diffable(empty, empty) || !diffable(strings.Repeat("\n", 1_990), strings.Repeat("\n", 1_990)) {
+		t.Fatalf("%q", got)
+	}
 }

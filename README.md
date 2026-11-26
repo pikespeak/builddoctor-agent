@@ -67,6 +67,7 @@ flowchart LR
   G -->|connector| J[TypeSafe]
   G -->|connector| T[GitHub: own test project]
   G -->|read only| R[GitHub: public projects]
+  P -->|connector| M[Resend: start notice to the operator]
 ```
 
 | Folder | Content |
@@ -81,7 +82,8 @@ The agent gathers facts, proposes and checks changes, and reports through Ash ac
 
 ## Safety
 
-- **Connectors:** GitHub (only our test project), OpenAI and TypeSafe (only two paths each). The Sprite holds no key for these connectors.
+- **Connectors:** GitHub (only our test project), OpenAI and TypeSafe (only two paths each), and Resend (only `POST /emails`, used to notify the operator when an examination starts). The Sprite holds no key for these connectors.
+- **Health:** `/health` returns 200 only when the database responds and the app has received an authenticated agent request within the last 60 seconds; an external monitor checks it.
 - **Public projects** are read without credentials or with a token that GitHub limits to public data.
 - **Network:** rules set from outside allow the Sprite only the hosts that the running app needs (`ops/network.sh`).
 - **Limits:** starts per address, one examination per project in 24 hours, and a shared spending stop.

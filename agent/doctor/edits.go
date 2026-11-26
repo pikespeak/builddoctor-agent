@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -24,7 +25,20 @@ type Edit struct {
 var (
 	measurable = []string{"remove_needs", "enable_setup_cache"}
 	Kinds      = append(slices.Clone(measurable), "set_timeout", "cancel_superseded")
+	// ForeignKinds leave out remove_needs: in somebody else's project, code cannot see whether a job
+	// depends on another one through scripts or actions it does not read (Codex peer review, 2026-11-26).
+	ForeignKinds = slices.DeleteFunc(slices.Clone(Kinds), func(k string) bool { return k == "remove_needs" })
+	// setupActions use a cache of their own when "cache: false" is gone. Only setup-go caches by
+	// default, from v4 on; setup-node, setup-python and setup-java name a package manager there, and
+	// setup-dotnet defaults to no cache. Other actions and pinned commits keep their setting, except
+	// the commit of setup-go v5 that our own test project uses (demo/ci-patient).
+	setupActions = regexp.MustCompile(`^actions/setup-go@(v([4-9]|[1-9][0-9])(\.|$)|40f1582b2485089dde7abd97c1529aa768e1baff$)`)
 )
+
+// only keeps the edits of the allowed kinds.
+func only(edits []Edit, kinds []string) []Edit {
+	return slices.DeleteFunc(slices.Clone(edits), func(e Edit) bool { return !slices.Contains(kinds, e.Kind) })
+}
 
 // cancelRule is the only concurrency rule that is ever added. Runs of other events keep their own group.
 var cancelRule = map[string]any{
@@ -199,6 +213,9 @@ func enableCache(job *yaml.Node, gone map[int]bool) bool {
 	done := false
 	for _, s := range steps.Content {
 		with := value(s, "with")
+		if uses := value(s, "uses"); uses == nil || !setupActions.MatchString(uses.Value) {
+			continue
+		}
 		if c := value(with, "cache"); c != nil && c.Value == "false" {
 			remove(with, "cache", gone)
 			done = true

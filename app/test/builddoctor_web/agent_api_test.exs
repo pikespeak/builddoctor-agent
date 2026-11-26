@@ -52,14 +52,15 @@ defmodule BuilddoctorWeb.AgentApiTest do
   test "carries an audit from examination to a verdict", %{conn: conn} do
     audit = Bench.start_audit!("pikespeak/ci-patient", @sha, actor: Actor.requester())
 
-    assert [%{"id" => id}] =
+    # The agent compares the stored commit and file with what it reads after a restart.
+    assert [%{"id" => id, "attributes" => %{"base_sha" => @sha, "workflow_path" => path}}] =
              conn
              |> agent()
              |> get("/api/json/audits/open")
              |> json_response(200)
              |> Map.get("data")
 
-    assert id == audit.id
+    assert id == audit.id and path =~ ".github/workflows/"
     assert conn |> agent() |> get("/api/json/ai_calls/budget_left") |> json_response(200) == true
 
     trial =

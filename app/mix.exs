@@ -27,8 +27,9 @@ defmodule Builddoctor.MixProject do
   end
 
   # xmerl checks in tests that every drawn SVG is well-formed.
-  defp extra_applications(:test), do: [:logger, :runtime_tools, :xmerl]
-  defp extra_applications(_), do: [:logger, :runtime_tools]
+  # inets and ssl for the start notice to PostHog (Builddoctor.Announce).
+  defp extra_applications(:test), do: [:logger, :runtime_tools, :xmerl, :inets, :ssl]
+  defp extra_applications(_), do: [:logger, :runtime_tools, :inets, :ssl]
 
   def cli do
     [

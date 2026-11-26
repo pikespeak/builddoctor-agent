@@ -20,7 +20,8 @@ defmodule BuilddoctorWeb.FrontLive do
       "You have used up your examinations for today. Please come back tomorrow.",
     "error.limit.busy" =>
       "Several projects are being read right now. Please try again in a minute.",
-    "error.slot.invalid" => "Please choose a blank page."
+    "error.slot.invalid" => "Please choose a blank page.",
+    "error.paper.busy" => "Every page is still being printed. Please try again in a minute."
   }
 
   @impl true
@@ -130,7 +131,8 @@ defmodule BuilddoctorWeb.FrontLive do
   end
 
   def handle_event("plant", %{"project" => project}, socket) when is_binary(project) do
-    slot = socket.assigns.chosen || List.first(socket.assigns.free)
+    # On a full paper any page will do: the application gives the oldest finished one.
+    slot = socket.assigns.chosen || List.first(socket.assigns.free) || 1
 
     actor = Requester.actor(socket)
 
@@ -184,7 +186,7 @@ defmodule BuilddoctorWeb.FrontLive do
         Is your GitHub pipeline slower than it has to be?
       </h1>
       <form
-        :if={@may_start and @free != []}
+        :if={@may_start}
         id="plant"
         phx-submit="plant"
         data-track="print"
@@ -240,11 +242,12 @@ defmodule BuilddoctorWeb.FrontLive do
       </p>
       <p :if={@may_start} aria-live="polite" id="count" class="text-lg">
         {if @free == [],
-          do: "The paper is full. All #{Audit.places()} pages are printed.",
+          do:
+            "All #{Audit.places()} pages are taken. A new project takes the page of the oldest finished edition. The previous edition stays in the archive.",
           else: "#{map_size(@planted)} of #{Audit.places()} pages printed."}
-        <a :if={@free == []} href="#found" class="inline-block py-2 underline">See what was found</a>
-        <span :if={@free != []}>Free and read-only: we change nothing in your project.</span>
+        <span>Free and read-only: we change nothing in your project.</span>
       </p>
+      <Layouts.entry />
       <.lead_story :if={@lead} audit={@lead} />
       <a
         :if={proven(@own)}
@@ -464,6 +467,10 @@ defmodule BuilddoctorWeb.FrontLive do
   defp own_tag(%{trial: %{verdict: :accepted}}), do: "Proven"
   defp own_tag(%{audit: %{state: :done}}), do: "Not proven"
   defp own_tag(%{audit: %{state: :measuring}}), do: "Being measured"
+
+  defp own_tag(%{audit: %{state: :awaiting_approval, council_done: true}, trial: nil}),
+    do: "Not passed"
+
   defp own_tag(%{audit: %{state: :awaiting_approval}}), do: "Waiting"
   defp own_tag(_), do: "Being read"
 
@@ -476,6 +483,9 @@ defmodule BuilddoctorWeb.FrontLive do
 
   defp own_words(%{audit: %{state: :measuring}}),
     do: "Our own test project is being measured right now."
+
+  defp own_words(%{audit: %{state: :awaiting_approval, council_done: true}, trial: nil}),
+    do: "The council did not pass the proposal for our own test project."
 
   defp own_words(%{audit: %{state: :awaiting_approval}}),
     do: "Our own test project waits for the requester."

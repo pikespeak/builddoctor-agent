@@ -12,6 +12,9 @@ config :ash_oban, pro?: false
 # The last day (UTC) without a daily total.
 config :builddoctor, test_phase_until: ~D[2026-12-01]
 
+# A start notice goes only to a gateway of the Sprite; tests use a local server instead.
+config :builddoctor, notice_gateway_prefix: "https://api.sprites.dev/v1/gateway/resend/"
+
 config :builddoctor, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,

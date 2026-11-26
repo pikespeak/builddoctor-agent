@@ -49,7 +49,7 @@ defmodule BuilddoctorWeb.LegalHTML do
           The data are: the kind of page, without its query and without the ID of an edition; how long and how far it was read; named controls that were used; the domain you came from and which of our own posts you followed; random IDs for browser and visit; browser, operating system, device type, language, time zone and window size; and the time. We leave out what you type, page titles, texts and project names. There are no session recordings. Your IP address reaches PostHog when the data are sent; we have set PostHog to discard it and not to derive a place from it.
         </p>
         <p>
-          PostHog keeps the random IDs and the visit in local and session storage. The purpose is to learn how the page is used and to improve it. The legal basis is your consent (Section 25(1) TDDDG, Art. 6(1)(a) GDPR). It is voluntary, and you can withdraw it at any time with “Analytics choice” at the bottom of the page; this stops the sending and deletes PostHog's data in this browser. Withdrawing consent does not affect processing that took place before you withdrew it. Events are kept in our PostHog project for 12 months and are then deleted during the next monthly cleanup, which can take up to about another month. See <a
+          PostHog keeps the random IDs and the visit in local and session storage. The purpose is to learn how the page is used and to improve it. The legal basis is your consent (Section 25(1) TDDDG, Art. 6(1)(a) GDPR). It is voluntary, and you can withdraw it at any time with “Analytics choice” at the bottom of the page; this stops the sending and deletes PostHog's data in this browser. Withdrawing consent does not affect processing that took place before you withdrew it. Events are set to be kept in our PostHog project for 12 months; PostHog then deletes them during its cleanups, which can take up to about two more months. See <a
             class="underline"
             href="https://posthog.com/privacy"
             rel="noopener"
@@ -77,6 +77,15 @@ defmodule BuilddoctorWeb.LegalHTML do
           >TypeSafe's privacy policy</a>.
         </p>
       </.part>
+      <.part title="Notifications when an examination starts">
+        <p>
+          When an examination starts, our server emails the operator the name of the project, whether a visitor or the operator started it, and the time. The email is sent by Plus Five Five, Inc. (Resend) through a Fly.io connector. This also happens if you decline analytics. We do not include your IP address, cookies or browser identifiers. Our legitimate interest (Art. 6(1)(f) GDPR) is to notice use and problems quickly. Resend keeps sent emails for 30 days and stores its data in the United States; the operator keeps the emails in the mailbox. See <a
+            class="underline"
+            href="https://resend.com/legal/privacy-policy"
+            rel="noopener"
+          >Resend's privacy policy</a>.
+        </p>
+      </.part>
       <.part title="When you write to us">
         <p>
           We use your message and email address to answer you. If you ask for a place on the waiting list for private editions, we keep your address in our mailbox and use it only to write to you about them, until you ask us to remove it or we give up the plan. The legal basis is your consent (Art. 6(1)(a) GDPR); you can withdraw it at any time by email. Withdrawing it does not affect the processing before. Cloudflare receives and forwards the mail and answers DNS queries for the domain. A feed reader that follows a project sends us requests like any other visit; we keep no list of followers.
@@ -89,7 +98,7 @@ defmodule BuilddoctorWeb.LegalHTML do
       </.part>
       <.part title="Other countries">
         <p>
-          Fly.io, OpenAI, TypeSafe, GitHub, Tigris, Cloudflare and, if you accept analytics, PostHog are based in the United States or may process data there.
+          Fly.io, OpenAI, TypeSafe, GitHub, Tigris, Cloudflare, Resend and, if you accept analytics, PostHog are based in the United States or may process data there.
         </p>
       </.part>
       <.part title="Your right to object">

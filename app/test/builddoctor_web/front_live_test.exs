@@ -13,6 +13,32 @@ defmodule BuilddoctorWeb.FrontLiveTest do
   defp submit(view, project),
     do: view |> form("#plant", %{project: project}) |> render_submit()
 
+  test "a judge finds the film, the code and a preview card", %{conn: conn} do
+    html = conn |> get(~p"/") |> html_response(200)
+    assert html =~ ~r{property="og:image" content="https?://[^"]+/images/og\.jpg"}
+    assert html =~ ~s(name="twitter:card" content="summary_large_image")
+
+    assert html =~
+             ~s(property="og:title" content="Build! The Daily Flake, a tabloid about your CI")
+
+    assert html =~
+             ~r{property="og:description" content="AI agents read a public GitHub Actions pipeline[^"]+"}
+
+    assert html =~ ~r{name="description"\s+content="BuildDoctor is a newsroom of AI agents[^"]+"}
+    {:ok, view, _} = live(conn, ~p"/")
+    assert has_element?(view, "#entry a[href='https://youtu.be/AMyisqY_Mkk']", "Watch the film")
+
+    assert has_element?(
+             view,
+             "#entry a[href='https://github.com/pikespeak/builddoctor-agent']",
+             "Read the code"
+           )
+
+    {:ok, how, _} = live(conn, ~p"/how-it-works")
+    assert has_element?(how, "#entry a[data-track='code']")
+    assert conn |> get("/images/og.jpg") |> response(200)
+  end
+
   test "from a blank page to an edition", %{conn: conn} do
     {:ok, other, html} = live(conn, ~p"/")
     assert html =~ "0 of 100 pages printed."
@@ -66,14 +92,36 @@ defmodule BuilddoctorWeb.FrontLiveTest do
     assert render_click(view, "choose", %{"slot" => "x"}) =~ "Public project"
   end
 
-  test "a full paper says so", %{conn: conn} do
-    for slot <- 1..100,
-        do: Bench.plant_audit!("a/b#{slot}", slot, actor: Actor.requester())
+  test "a full paper gives the oldest finished page to a new project", %{conn: conn} do
+    [first | rest] =
+      for slot <- 1..100,
+          do: Bench.plant_audit!("a/b#{slot}", slot, actor: Actor.requester())
 
     {:ok, view, html} = live(conn, ~p"/")
-    assert html =~ "The paper is full. All 100 pages are printed."
-    refute has_element?(view, "#plant")
-    assert render_submit(view, "plant", %{"project" => "x/y"}) =~ "choose a blank page"
+    assert html =~ "All 100 pages are taken. A new project takes the page of the oldest finished"
+    assert has_element?(view, "#plant")
+    # While every page is still being read, none is taken.
+    assert render_submit(view, "plant", %{"project" => "x/y"}) =~
+             "Every page is still being printed"
+
+    # The later one finishes first; the older one still gets its page taken first.
+    Bench.finish_examination!(Enum.at(rest, 48), %{}, actor: Actor.agent())
+    Bench.finish_examination!(first, %{}, actor: Actor.agent())
+    # A project never takes the page of its own edition.
+    assert render_submit(view, "plant", %{"project" => "a/b1"}) =~ "already has its edition"
+
+    assert {:error, {:live_redirect, %{to: "/a/" <> id}}} =
+             render_submit(view, "plant", %{"project" => "x/y"})
+
+    assert Bench.get_audit!(id).slot == 1
+    old = Bench.get_audit!(first.id)
+    assert {old.slot, old.planted_as, old.state} == {nil, nil, :examined}
+    assert conn |> get(~p"/a/#{first.id}") |> html_response(200) =~ "a/b1"
+    # The project whose page went to the archive waits 24 hours like any other.
+    {:ok, again, _} = live(build_conn(), ~p"/")
+
+    assert render_submit(again, "plant", %{"project" => "a/b1"}) =~
+             "examined in the last 24 hours"
   end
 
   test "our own project stands apart with its result", %{conn: conn} do

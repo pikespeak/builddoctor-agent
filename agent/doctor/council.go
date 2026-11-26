@@ -287,8 +287,20 @@ func planOf(facts []Fact) []Fact {
 	return out
 }
 
+// maxDiffCells bounds the table of changed: about 2,000 lines on each side, 32 MB. A file of 20 kB
+// can hold 20,000 empty lines, and their table would need gigabytes (Codex peer review, 2026-11-26).
+const maxDiffCells = 4_000_000
+
+// diffable says whether changed may compare the two texts.
+func diffable(original, patched string) bool {
+	return (strings.Count(original, "\n")+2)*(strings.Count(patched, "\n")+2) <= maxDiffCells
+}
+
 // changed shows the change with two lines around it, so that a vote sees where a line belongs.
 func changed(original, patched string) string {
+	if !diffable(original, patched) {
+		return "The file is too long to show the change."
+	}
 	a, b := strings.Split(original, "\n"), strings.Split(patched, "\n")
 	same := make([][]int, len(a)+1) // longest common rest of a from i and b from j
 	for i := range same {

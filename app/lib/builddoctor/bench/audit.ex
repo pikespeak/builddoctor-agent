@@ -64,12 +64,15 @@ defmodule Builddoctor.Bench.Audit do
 
       validate one_of(:repository, @measurable),
         message: "is not on the list of allowed repositories"
+
+      change Builddoctor.Bench.Changes.Announce
     end
 
     create :examine_own do
       description "The Requester starts our own project; the agent chooses the newest good run."
       accept []
       change set_attribute(:repository, hd(@measurable))
+      change Builddoctor.Bench.Changes.Announce
     end
 
     create :examine_again do
@@ -78,6 +81,7 @@ defmodule Builddoctor.Bench.Audit do
       argument :visitor, :string, constraints: [max_length: 40]
       change Builddoctor.Bench.Changes.Again
       change Builddoctor.Bench.Changes.VisitorLimit
+      change Builddoctor.Bench.Changes.Announce
     end
 
     update :give_way do
@@ -136,7 +140,7 @@ defmodule Builddoctor.Bench.Audit do
     end
 
     create :plant do
-      description "A Visitor gives a public repository one of the free places."
+      description "A Visitor gives a public repository a free place, or the oldest finished one when all are taken."
       accept [:slot]
       argument :project, :string, allow_nil?: false, constraints: [max_length: 200]
       argument :visitor, :string, constraints: [max_length: 40]
@@ -144,7 +148,11 @@ defmodule Builddoctor.Bench.Audit do
       change Builddoctor.Bench.Changes.Plant
       change Builddoctor.Bench.Changes.OnceADay
       change Builddoctor.Bench.Changes.VisitorLimit
+
+      # After the visitor lock of VisitorLimit, so that two starts do not take the same oldest page.
+      change Builddoctor.Bench.Changes.MakeRoom
       validate match(:repository, @name), message: "error.repository.invalid"
+      change Builddoctor.Bench.Changes.Announce
     end
 
     read :planted do

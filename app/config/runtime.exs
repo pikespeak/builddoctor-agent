@@ -7,6 +7,10 @@ if config_env() != :test do
     edge_secret: System.get_env("EDGE_SECRET"),
     posthog_key: System.get_env("POSTHOG_KEY"),
     posthog_host: System.get_env("POSTHOG_HOST"),
+    # The start notice goes through the Resend connector of the Sprite (Builddoctor.Announce).
+    resend_gateway: System.get_env("RESEND_GATEWAY"),
+    notice_to: System.get_env("NOTICE_TO"),
+    notice_from: System.get_env("NOTICE_FROM"),
     imprint_file: System.get_env("IMPRINT_FILE"),
     public_mode: System.get_env("PUBLIC_MODE", "full")
 end

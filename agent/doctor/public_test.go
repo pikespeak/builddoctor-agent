@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -249,6 +250,49 @@ func TestCodeRepairsWhatTheAnalystLeaves(t *testing.T) {
 	got := w.trials["a"]
 	if w.done["a"] != "examined" || got["goal"] != "bill" || !strings.Contains(fmt.Sprint(got["patch"]), "timeout-minutes: 10") || !strings.Contains(fmt.Sprint(got["hypothesis"]), "does not make any step faster") || strings.Contains(strings.Join(w.logs, " "), "No change") {
 		t.Fatal(w.done, got, w.logs)
+	}
+}
+
+func TestForeignProjectsKeepTheirNeeds(t *testing.T) {
+	w := newWood() // the analyst proposes remove_needs, which only our own project may get
+	w.open["a"] = "some/project"
+	c, _ := w.crew(t)
+	w.until(t, c, func() bool { return len(w.done) == 1 })
+	if w.done["a"] != "examined" || !strings.Contains(fmt.Sprint(w.trials["a"]["patch"]), "needs: vet") || slices.Contains(ForeignKinds, "remove_needs") || !slices.Contains(Kinds, "remove_needs") {
+		t.Fatal(w.done, w.trials["a"])
+	}
+	if got := only([]Edit{{Kind: "remove_needs", Job: "test"}, {Kind: "set_timeout", Job: "test"}}, ForeignKinds); len(got) != 1 || got[0].Kind != "set_timeout" {
+		t.Fatal(got)
+	}
+}
+
+func TestCacheOnlyForSetupActions(t *testing.T) {
+	for _, other := range []string{"some/tool@v1", "actions/setup-node@v4", "actions/setup-dotnet@v4", "actions/setup-go@v3", "actions/setup-go@v3.5.0", "actions/setup-go@0123456789012345678901234567890123456789"} {
+		if _, err := Apply(strings.Replace(wf, "actions/setup-go@v5", other, 1), []Edit{{Kind: "enable_setup_cache", Job: "vet"}}); err == nil {
+			t.Fatal("cache: false was removed for", other)
+		}
+	}
+	before := strings.Replace(wf, "actions/setup-go@v5", "./local-action", 1)
+	after := strings.Replace(before, "        with:\n          cache: false\n", "", 1)
+	if why, ok := inspect(before, after, nil); ok {
+		t.Fatal("the engineer passed it:", why)
+	}
+	for _, ok := range []string{"actions/setup-go@v5", "actions/setup-go@v4.1.0", "actions/setup-go@v10", "actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff"} {
+		if got, err := Apply(strings.Replace(wf, "actions/setup-go@v5", ok, 1), []Edit{{Kind: "enable_setup_cache", Job: "vet"}}); err != nil || strings.Contains(got, "cache:") {
+			t.Fatal(ok, got, err)
+		}
+	}
+}
+
+func TestNoProposalForAFileTooLongToShow(t *testing.T) {
+	w := newWood()
+	w.model = `{"goal":"wait","hypothesis":"Fine as it is.","edits":[]}`
+	w.file += strings.Repeat("\n", 2_500)
+	w.open["a"] = "some/project"
+	c, _ := w.crew(t)
+	w.until(t, c, func() bool { return len(w.done) == 1 })
+	if w.done["a"] != "examined" || w.trials["a"] != nil || !strings.Contains(strings.Join(w.logs, " "), "too long for a proposed change") {
+		t.Fatal(w.done, w.trials, w.logs)
 	}
 }
 

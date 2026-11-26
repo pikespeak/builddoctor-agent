@@ -333,6 +333,17 @@ defmodule BuilddoctorWeb.AuditLive do
     """
   end
 
+  defp moment(
+         %{view: %{audit: %{state: :awaiting_approval, council_done: true}, trial: nil}} = assigns
+       ) do
+    ~H"""
+    <p id="refused" class="max-w-prose">
+      The council did not pass this proposal, so it is not tested. A proposal that does not pass stays unpublished.
+    </p>
+    <.stop :if={@requester} asking={@asking} measuring={false} />
+    """
+  end
+
   defp moment(%{view: %{audit: %{state: :awaiting_approval}, trial: nil}} = assigns) do
     ~H"""
     <p>The council is checking the proposal. Nothing starts before it has passed.</p>

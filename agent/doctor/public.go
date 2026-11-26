@@ -217,6 +217,18 @@ func (d Doctor) foreign(ctx context.Context, au *Audit) (failed error) {
 	if err != nil {
 		return err
 	}
+	trials, err := d.Ash.Trials(ctx, au.ID)
+	if err != nil {
+		return err
+	}
+	found, err := d.Ash.Findings(ctx, au.ID)
+	if err != nil {
+		return err
+	}
+	// After a restart, stored findings belong to the commit and the file they were written for.
+	if len(trials)+len(found) > 0 && au.BaseSHA != "" && (au.BaseSHA != f.SHA || au.WorkflowPath != f.Path) {
+		return refused{errors.New("The project changed during the examination, so its findings no longer fit. Examine it again.")}
+	}
 	if err := d.Ash.Identify(ctx, au.ID, f.SHA, f.Path, f.Branch, f.Total); err != nil {
 		return err
 	}
@@ -235,14 +247,6 @@ func (d Doctor) foreign(ctx context.Context, au *Audit) (failed error) {
 	if err := d.notices(ctx, au, notices); err != nil {
 		return err
 	}
-	trials, err := d.Ash.Trials(ctx, au.ID)
-	if err != nil {
-		return err
-	}
-	found, err := d.Ash.Findings(ctx, au.ID)
-	if err != nil {
-		return err
-	}
 	if len(trials)+len(found) > 0 { // proposed before a restart; the findings cite the stored facts
 		facts = au.Facts
 	} else {
@@ -259,7 +263,7 @@ func (d Doctor) foreign(ctx context.Context, au *Audit) (failed error) {
 				return err
 			}
 		}
-		advice, err := d.ask(ctx, au, f.Workflow, f.All, facts, Kinds)
+		advice, err := d.ask(ctx, au, f.Workflow, f.All, facts, ForeignKinds)
 		if _, lost := cast(); lost != nil {
 			return lost
 		}
@@ -279,7 +283,7 @@ func (d Doctor) foreign(ctx context.Context, au *Audit) (failed error) {
 			return err
 		}
 		goal, why := advice.Goal, advice.Hypothesis
-		patched, err := Apply(f.Workflow, limits(f.Workflow, advice.Edits, f.All))
+		patched, err := Apply(f.Workflow, limits(f.Workflow, only(advice.Edits, ForeignKinds), f.All))
 		found := err == nil
 		if !found { // nothing from the analyst; code may still repair what the grade takes points off for
 			goal = "bill"
@@ -292,7 +296,11 @@ func (d Doctor) foreign(ctx context.Context, au *Audit) (failed error) {
 				}
 			}
 		}
-		if !found {
+		if found && !diffable(f.Workflow, patched) { // the votes could not see the change
+			if err := d.Ash.Log(ctx, au.ID, "openai", "The workflow file is too long for a proposed change.", ""); err != nil {
+				return err
+			}
+		} else if !found {
 			if err := d.Ash.Log(ctx, au.ID, "openai", "No change from the safe list would help here.", ""); err != nil {
 				return err
 			}

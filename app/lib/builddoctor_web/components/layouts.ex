@@ -60,6 +60,38 @@ defmodule BuilddoctorWeb.Layouts do
     """
   end
 
+  @film "https://youtu.be/AMyisqY_Mkk"
+  @code "https://github.com/pikespeak/builddoctor-agent"
+
+  @doc "What a judge looks for first: the entry, the film and the code."
+  def entry(assigns) do
+    assigns = assign(assigns, film: @film, code: @code)
+
+    ~H"""
+    <p id="entry" class="flex flex-wrap items-center gap-x-5 border-2 border-bark bg-white px-4 py-2">
+      <span>
+        <strong>A Fly.io Hacksgiving 2026 entry</strong>, started on November 23.
+      </span>
+      <a
+        href={@film}
+        rel="noopener"
+        data-track="film"
+        class="inline-flex min-h-11 items-center underline"
+      >
+        Watch the film (2 min)
+      </a>
+      <a
+        href={@code}
+        rel="noopener"
+        data-track="code"
+        class="inline-flex min-h-11 items-center underline"
+      >
+        Read the code (MIT)
+      </a>
+    </p>
+    """
+  end
+
   @doc "Always one click away."
   def legal(assigns) do
     ~H"""

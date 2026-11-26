@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
     <.live_title default="BuildDoctor" phx-no-format>{assigns[:page_title]}</.live_title>
+    <meta
+      name="description"
+      content="BuildDoctor is a newsroom of AI agents on one Fly.io Sprite. It reads a public GitHub Actions pipeline and prints a 1950s tabloid about it, checked by a council of models and code."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BuildDoctor" />
+    <meta property="og:title" content="Build! The Daily Flake, a tabloid about your CI" />
+    <meta
+      property="og:description"
+      content="AI agents read a public GitHub Actions pipeline and print its edition while you watch. Models vote; code decides."
+    />
+    <meta property="og:url" content={url(~p"/")} />
+    <meta property="og:image" content={url(~p"/images/og.jpg")} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The Build! masthead and the question: Is your GitHub pipeline slower than it has to be?"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>

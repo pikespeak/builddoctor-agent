@@ -334,6 +334,9 @@ func allowCache(x, y map[string]any) bool {
 	for i := range min(len(sx), len(sy)) {
 		a, _ := sx[i].(map[string]any)
 		b, _ := sy[i].(map[string]any)
+		if uses, _ := a["uses"].(string); !setupActions.MatchString(uses) {
+			continue
+		}
 		wa, _ := a["with"].(map[string]any)
 		wb, _ := b["with"].(map[string]any)
 		_, kept := wb["cache"]

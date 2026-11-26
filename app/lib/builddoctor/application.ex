@@ -7,6 +7,8 @@ defmodule Builddoctor.Application do
 
   @impl true
   def start(_type, _args) do
+    BuilddoctorWeb.Health.setup()
+
     children = [
       BuilddoctorWeb.Telemetry,
       Builddoctor.Repo,

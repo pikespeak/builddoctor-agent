@@ -55,6 +55,13 @@ defmodule BuilddoctorWeb.Router do
     forward "/", BuilddoctorWeb.AshJsonApiRouter
   end
 
+  # For the outside check (ops/uptime): no session, no cookie.
+  scope "/" do
+    pipe_through :feed
+
+    get "/health", BuilddoctorWeb.Health, []
+  end
+
   scope "/feed", BuilddoctorWeb do
     pipe_through :feed
 

@@ -53,7 +53,9 @@ defmodule BuilddoctorWeb.HowLive do
     {"The Sprite",
      "One Fly.io Sprite holds everything: the agent in Go, the page in Phoenix LiveView, the rules in Ash and the database in Postgres. It can sleep while nothing happens; during the contest we keep it awake. A small Fly.io machine in front of it only passes requests on for builddoctor.app."},
     {"OpenAI and TypeSafe",
-     "Two more connectors, without a key in the Sprite for either. OpenAI: one model suspects, another one checks. TypeSafe: Jev, a decision model, answers typed questions about published findings; if it is silent, the edition appears without its word. Audit calls are tracked against a shared spending limit."}
+     "Two more connectors, without a key in the Sprite for either. OpenAI: one model suspects, another one checks. TypeSafe: Jev, a decision model, answers typed questions about published findings; if it is silent, the edition appears without its word. Audit calls are tracked against a shared spending limit."},
+    {"Resend",
+     "A fourth connector, also without a key in the Sprite. It may only send email: when an examination starts, the operator gets a short note with the project name."}
   ]
 
   @impl true
@@ -106,6 +108,7 @@ defmodule BuilddoctorWeb.HowLive do
         </div>
         <.numbers :if={@proof} view={@proof} />
       </section>
+      <Layouts.entry />
       <.proof :if={@proof} view={@proof} />
       <section id="steps" class="grid gap-4">
         <h2 class="font-display text-3xl font-bold">How it works</h2>
