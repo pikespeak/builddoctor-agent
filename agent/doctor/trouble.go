@@ -111,7 +111,18 @@ func (p Public) trouble(ctx context.Context, base string, all map[string][]past,
 				SHA        string `json:"head_sha"`
 			}
 			if p.c.do(ctx, "GET", fmt.Sprintf("%s/actions/runs/%d/attempts/1", base, run.ID), nil, &r) == nil && r.Conclusion == "failure" && r.SHA == run.SHA {
-				out = append(out, Fact{ID: "flaky", Text: fmt.Sprintf("Workflow %s: one run failed in attempt 1 and succeeded in attempt %d on the same commit.", plainName(path.Base(at)), run.Attempt), Commit: run.SHA})
+				text := fmt.Sprintf("Workflow %s: one run failed in attempt 1 and succeeded in attempt %d on the same commit.", plainName(path.Base(at)), run.Attempt)
+				// Which step failed the first time, so that a pass on retry does not hide it (feedback, 2026-11-26).
+				if f, ok := p.failedIn(ctx, base, fmt.Sprintf("%d/attempts/1", run.ID)); ok {
+					text += fmt.Sprintf(" In attempt 1, step %q of job %q failed.", f.step, f.job)
+				}
+				if at == examined && newestSuccess(all[at]) == run.ID {
+					text += " This is the examined run."
+				}
+				if retried, read := retries(all[at]); retried > 1 {
+					text += fmt.Sprintf(" Of the %d runs that were read, %d were run again and then succeeded.", read, retried)
+				}
+				out = append(out, Fact{ID: "flaky", Text: text, Commit: run.SHA})
 			}
 			return out // one look is enough
 		}
@@ -119,13 +130,39 @@ func (p Public) trouble(ctx context.Context, base string, all map[string][]past,
 	return out
 }
 
+// newestSuccess is the ID of the newest successful run, the one that is examined for its workflow.
+func newestSuccess(runs []past) int64 {
+	for _, r := range runs {
+		if r.Conclusion == "success" {
+			return r.ID
+		}
+	}
+	return 0
+}
+
+// retries counts the successful runs that were run again (attempt 2 or later), among the runs that were read.
+// A rerun of a run that had already succeeded counts too; GitHub's list shows only the last attempt.
+func retries(runs []past) (retried, read int) {
+	for _, r := range runs {
+		if r.Attempt >= 2 && r.Conclusion == "success" {
+			retried++
+		}
+	}
+	return retried, len(runs)
+}
+
 type failure struct {
 	id        int64
 	job, step string
 }
 
-// failed finds the first failed step of a run.
+// failed finds the first failed step of a run, in its latest attempt.
 func (p Public) failed(ctx context.Context, base string, run int64) (failure, bool) {
+	return p.failedIn(ctx, base, fmt.Sprint(run))
+}
+
+// failedIn finds the first failed step in "<run>" or "<run>/attempts/<n>".
+func (p Public) failedIn(ctx context.Context, base, run string) (failure, bool) {
 	var r struct {
 		Jobs []struct {
 			ID         int64
@@ -134,7 +171,7 @@ func (p Public) failed(ctx context.Context, base string, run int64) (failure, bo
 			Steps      []struct{ Name, Conclusion string }
 		}
 	}
-	if p.c.do(ctx, "GET", fmt.Sprintf("%s/actions/runs/%d/jobs?per_page=100", base, run), nil, &r) != nil {
+	if p.c.do(ctx, "GET", fmt.Sprintf("%s/actions/runs/%s/jobs?per_page=100", base, run), nil, &r) != nil {
 		return failure{}, false
 	}
 	for _, j := range r.Jobs {

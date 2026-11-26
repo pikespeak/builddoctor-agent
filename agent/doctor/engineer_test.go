@@ -189,12 +189,21 @@ func failedJobs(step string) string {
 	return `{"jobs":[{"id":1,"name":"fine","conclusion":"success"},{"id":7,"name":"scan <b>","conclusion":"failure","steps":[{"name":"Set up job","conclusion":"success"},{"name":"` + step + `","conclusion":"failure"}]}]}`
 }
 
+func TestRetriesAreCounted(t *testing.T) {
+	runs := []past{{ID: 5, Conclusion: "failure"}, {ID: 4, Conclusion: "success", Attempt: 2}, {ID: 3, Conclusion: "success", Attempt: 3}, {ID: 2, Conclusion: "success", Attempt: 1}}
+	if retried, read := retries(runs); retried != 2 || read != 4 || newestSuccess(runs) != 4 || newestSuccess(runs[:1]) != 0 {
+		t.Fatal(retried, read)
+	}
+}
+
 func TestTrouble(t *testing.T) {
 	w := newWood()
 	ci := ".github/workflows/ci.yml"
-	w.runs = `{"workflow_runs":[` + runsOf(".github/workflows/scan.yml", 91, "failure", "failure", "cancelled", "failure", "success", "failure") + "," + runsOf(".github/workflows/dead.yml", 81, "timed_out", "startup_failure") + "," + strings.NewReplacer(`"id":2,`, `"id":93,`, "10:01:00", "10:09:00").Replace(runsOf(ci, 1, "success", "failure")) + `]}`
+	w.runs = `{"workflow_runs":[` + runsOf(".github/workflows/scan.yml", 91, "failure", "failure", "cancelled", "failure", "success", "failure") + "," + runsOf(".github/workflows/dead.yml", 81, "timed_out", "startup_failure") + "," + strings.NewReplacer(`"id":2,`, `"id":93,`, "10:01:00", "10:09:00").Replace(runsOf(ci, 1, "success", "failure", "success")) + `]}`
 	w.runs = strings.Replace(w.runs, `"id":1,`, `"id":1,"run_attempt":2,`, 1)
+	w.runs = strings.Replace(w.runs, `"id":3,`, `"id":3,"run_attempt":2,`, 1)
 	w.attempt = `{"conclusion":"failure","head_sha":"` + strings.Repeat("0", 40) + `"}`
+	w.attemptJobs = failedJobs("Flaky test")
 	w.failed = map[string]string{"91": failedJobs("Scan `x`"), "92": failedJobs("Scan `x`"), "93": failedJobs("Unit")}
 	w.notes = `[{"annotation_level":"notice","message":"disk full"},{"annotation_level":"failure","message":"You idiot. Process completed with exit code 1."}]`
 	c, _ := w.crew(t)
@@ -214,7 +223,7 @@ func TestTrouble(t *testing.T) {
 		"cause: Workflow scan.yml: GitHub's note on that job says only that a command ended",
 		"red2: Workflow dead.yml: all 2 finished runs",
 		`failstep: In the newest failed run of the examined workflow, step "Unit" of job "scan b" failed.`,
-		"flaky: Workflow ci.yml: one run failed in attempt 1 and succeeded in attempt 2",
+		`flaky: Workflow ci.yml: one run failed in attempt 1 and succeeded in attempt 2 on the same commit. In attempt 1, step "Flaky test" of job "scan b" failed. This is the examined run. Of the 3 runs that were read, 2 were run again and then succeeded.`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in\n%s", want, got)
@@ -222,6 +231,12 @@ func TestTrouble(t *testing.T) {
 	}
 	if strings.Contains(got, "idiot") || strings.Contains(got, "redstep2") || f.Trouble[0].Commit != strings.Repeat("3", 40) || f.Trouble[3].Commit != "" {
 		t.Fatal(f.Trouble)
+	}
+	// An older retried run is not the examined one, and one retry alone is not counted.
+	older := strings.Replace(w.runs, `"id":1,"run_attempt":2,`, `"id":1,`, 1)
+	w.runs, w.attempt = older, `{"conclusion":"failure","head_sha":"`+strings.Repeat("2", 40)+`"}`
+	if got := text(read().Trouble); !strings.Contains(got, "flaky: Workflow ci.yml: one run failed in attempt 1") || strings.Contains(got, "examined run") || strings.Contains(got, "were run again") {
+		t.Fatal(got)
 	}
 	w.failed["92"] = failedJobs("Other")
 	w.notes = "[]"

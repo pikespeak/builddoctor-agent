@@ -20,36 +20,37 @@ const sha40 = "0123456789012345678901234567890123456789"
 
 // wood plays GitHub without credentials, OpenAI and the application for many projects.
 type wood struct {
-	mu       sync.Mutex
-	open     map[string]string // audit to repository
-	measure  map[string]bool
-	done     map[string]string
-	errors   map[string]int
-	trials   map[string]map[string]any
-	logs     []string
-	facts    string
-	finds    []map[string]any
-	notices  []map[string]any
-	attempt  string
-	asks     []string // answers of the model to the question rounds
-	rounds   []string
-	asked    int
-	final    string
-	recorded int
-	wait     string
-	notes    string
-	failed   map[string]string // run to its jobs
-	broke    bool              // the budget is used up
-	model    string
-	repo     string // body of the repository answer
-	runs     string
-	file     string
-	jobs     string
-	code     map[string]int // path suffix to status
-	header   http.Header
-	auth     string
-	now, top int // projects at the same time, by their model calls
-	slow     time.Duration
+	mu          sync.Mutex
+	open        map[string]string // audit to repository
+	measure     map[string]bool
+	done        map[string]string
+	errors      map[string]int
+	trials      map[string]map[string]any
+	logs        []string
+	facts       string
+	finds       []map[string]any
+	notices     []map[string]any
+	attempt     string
+	attemptJobs string   // jobs of attempt 1
+	asks        []string // answers of the model to the question rounds
+	rounds      []string
+	asked       int
+	final       string
+	recorded    int
+	wait        string
+	notes       string
+	failed      map[string]string // run to its jobs
+	broke       bool              // the budget is used up
+	model       string
+	repo        string // body of the repository answer
+	runs        string
+	file        string
+	jobs        string
+	code        map[string]int // path suffix to status
+	header      http.Header
+	auth        string
+	now, top    int // projects at the same time, by their model calls
+	slow        time.Duration
 }
 
 func newWood() *wood {
@@ -152,6 +153,8 @@ func (w *wood) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		send(map[string]any{"status": "completed", "output": []any{map[string]any{"content": []any{map[string]any{"type": "output_text", "text": w.model}}}}, "usage": map[string]any{"input_tokens": 5, "output_tokens": 6}})
 	case p == "/api/json/notices":
 		w.notices = append(w.notices, at)
+	case strings.HasSuffix(p, "/attempts/1/jobs"):
+		io.WriteString(res, w.attemptJobs)
 	case strings.HasSuffix(p, "/attempts/1"):
 		io.WriteString(res, w.attempt)
 	case strings.HasSuffix(p, "/annotations"):
